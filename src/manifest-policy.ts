@@ -1,5 +1,6 @@
 export const extensionPermissions = [
   "activeTab",
+  "declarativeNetRequestWithHostAccess",
   "scripting",
   "storage",
   "sidePanel",

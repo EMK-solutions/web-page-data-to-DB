@@ -5,6 +5,7 @@ describe("extension permissions", () => {
   it("can read the active http(s) tab from a side-panel click", () => {
     expect([...extensionPermissions]).toEqual([
       "activeTab",
+      "declarativeNetRequestWithHostAccess",
       "scripting",
       "storage",
       "sidePanel",

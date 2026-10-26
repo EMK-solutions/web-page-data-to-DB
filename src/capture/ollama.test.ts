@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { blankFields, jobFieldsJsonSchema, ModelOutputError } from "@/src/capture/schema";
 import { type PageRead } from "@/src/capture/types";
 import { completeJobFields, OllamaError, testOllamaConnection } from "@/src/capture/ollama";
@@ -145,5 +145,24 @@ describe("Ollama chat", () => {
 
   it("refuses a non-local Ollama address", async () => {
     await expect(testOllamaConnection("https://models.example")).rejects.toBeInstanceOf(OllamaError);
+  });
+
+  it("shows a short Ollama error body and does not log the page", async () => {
+    const logged: unknown[][] = [];
+    const spy = vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
+      logged.push(args);
+    });
+    const fetchImpl: typeof fetch = async () =>
+      new Response('{"error":"origin not allowed"}', { status: 403 });
+    await expect(
+      completeJobFields({ baseUrl: "http://127.0.0.1:11434", model: "llama3.2", page }, fetchImpl),
+    ).rejects.toThrow('Ollama replied with HTTP 403. {"error":"origin not allowed"}');
+    expect(logged).toEqual([
+      ["Ollama replied with HTTP 403.", '{"error":"origin not allowed"}'],
+    ]);
+    const flat = logged.flat().join(" ");
+    expect(flat).not.toContain(page.visibleText);
+    expect(flat).not.toContain("Archivist");
+    spy.mockRestore();
   });
 });

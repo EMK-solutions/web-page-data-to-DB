@@ -1,3 +1,4 @@
+import { ensureLocalOllamaOrigin, formatOllamaHttpError } from "@/src/capture/ollama-origin";
 import { isRecord, parseJson } from "@/src/capture/records";
 import {
   jobFieldsJsonSchema,
@@ -180,9 +181,12 @@ async function request(
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), MODEL_TIMEOUT_MS);
   try {
+    await ensureLocalOllamaOrigin(base);
     const response = await fetchImpl(url, { ...init, signal: controller.signal });
     if (!response.ok) {
-      throw new OllamaError(`Ollama replied with HTTP ${response.status}.`);
+      const detail = formatOllamaHttpError(response.status, await response.text());
+      console.error(`Ollama replied with HTTP ${response.status}.`, detail.logBody);
+      throw new OllamaError(detail.panel);
     }
     return response;
   } catch (error) {
