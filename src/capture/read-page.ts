@@ -2,9 +2,8 @@ import { pageLanguage } from "@/src/capture/dom";
 import { indeedJobIdFromUrl } from "@/src/capture/indeed";
 import { readJsonLdJob } from "@/src/capture/jsonld";
 import { isLinkedInJobUrl, readLinkedInJob } from "@/src/capture/linkedin";
-import { cleanedPageText } from "@/src/capture/main-text";
-import { blankFields } from "@/src/capture/fields";
-import { longerText } from "@/src/capture/text";
+import { postingBodyText } from "@/src/capture/main-text";
+import { blankFields, rejectBoardIds } from "@/src/capture/fields";
 import { type PageRead } from "@/src/capture/types";
 
 const defaultWait = (ms: number) =>
@@ -21,7 +20,7 @@ export async function readOpenPage(
 
   if (isLinkedInJobUrl(pageUrl)) {
     const linkedIn = await readLinkedInJob(doc, pageUrl, wait);
-    const visibleText = cleanedPageText(doc, pageUrl);
+    const visibleText = postingBodyText(doc);
     return {
       fields: linkedIn.fields,
       sourceUrl: pageUrl,
@@ -34,15 +33,13 @@ export async function readOpenPage(
     };
   }
 
-  const visibleText = cleanedPageText(doc, pageUrl);
+  const visibleText = postingBodyText(doc);
   const structured = readJsonLdJob(doc);
-  const fields = structured ?? blankFields();
-  const sourceJobId = indeedJobIdFromUrl(pageUrl) ?? undefined;
+  const urlBoardIds = boardIdsFromUrl(pageUrl);
+  const sourceJobId = indeedJobIdFromUrl(pageUrl) ?? urlBoardIds[0];
+  const fields = rejectBoardIds(structured ?? blankFields(), [sourceJobId, ...urlBoardIds]);
   return {
-    fields: {
-      ...fields,
-      jobDescription: longerText(fields.jobDescription, visibleText),
-    },
+    fields,
     sourceUrl: pageUrl,
     pageLanguage: language,
     visibleText,
@@ -51,4 +48,17 @@ export async function readOpenPage(
     adapter: structured ? "structured" : "visible-text",
     ...(sourceJobId ? { sourceJobId } : {}),
   };
+}
+
+function boardIdsFromUrl(pageUrl: string): string[] {
+  const boardUuid = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  for (const match of pageUrl.matchAll(boardUuid)) {
+    const key = match[0].toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    ids.push(match[0]);
+  }
+  return ids;
 }

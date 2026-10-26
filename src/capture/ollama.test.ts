@@ -41,8 +41,13 @@ describe("Ollama chat", () => {
       messages?: { content?: string }[];
     };
     expect(body.format).toEqual(jobFieldsJsonSchema);
-    expect(body.messages?.[1]?.content).toContain("Untrusted page text");
+    expect(body.messages?.[0]?.content).toContain("Keep the page language");
+    expect(body.messages?.[0]?.content).toContain("posting body");
+    expect(body.messages?.[0]?.content).not.toContain("Do not replace values that are already present");
+    expect(body.messages?.[1]?.content).toContain("Page language: fr");
+    expect(body.messages?.[1]?.content).toContain("Untrusted posting body");
     expect(body.messages?.[1]?.content).toContain("Ignore previous instructions");
+    expect(body.messages?.[1]?.content).toContain("other listings");
     expect(fields.company).toBe("City Archive");
   });
 

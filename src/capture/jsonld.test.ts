@@ -37,6 +37,24 @@ describe("JobPosting JSON-LD", () => {
     expect(Object.keys(page.fields)).not.toContain("employmentType");
   });
 
+  it("leaves salary null when the posting states only a currency", () => {
+    const html = `<script type="application/ld+json">
+      {
+        "@type": "JobPosting",
+        "title": "Clerk",
+        "hiringOrganization": { "name": "Archive" },
+        "baseSalary": {
+          "@type": "MonetaryAmount",
+          "currency": "CHF",
+          "value": { "@type": "QuantitativeValue" }
+        }
+      }
+    </script>`;
+    const fields = readJsonLdJob(new DOMParser().parseFromString(html, "text/html"));
+    expect(fields?.salaryRange).toBeNull();
+    expect(fields?.jobTitle).toBe("Clerk");
+  });
+
   it("accepts @type as an array", () => {
     const fields = readJsonLdJob(loadFixture("jobposting-type-array.html"));
     expect(fields).toMatchObject({
@@ -47,15 +65,48 @@ describe("JobPosting JSON-LD", () => {
     });
   });
 
-  it("keeps the longer visible article when it outruns the schema description", async () => {
+  it("keeps the JSON-LD description when the surrounding page is longer", async () => {
     const page = await readOpenPage(
       loadFixture("visible-longer.html"),
       "https://jobs.example/binder",
       noWait,
     );
-    expect(page.structuredDescription).toBe("Short role.");
-    expect(page.fields.jobDescription).toContain("Sew signatures");
-    expect(page.fields.jobDescription?.length ?? 0).toBeGreaterThan("Short role.".length);
+    expect(page.fields.jobDescription).toBe("Short role.");
+    expect(page.fields.jobDescription).not.toContain("Sew signatures");
+    expect(page.fields.jobDescription).not.toContain("Skip to jobs");
+    expect(page.visibleText).toContain("Sew signatures");
+    expect(page.visibleText).not.toContain("Skip to jobs");
     expect(page.fields.jobTitle).toBe("Binder");
+  });
+
+  it("reads JobPosting fields and leaves the surrounding chrome out", async () => {
+    const boardId = "11111111-2222-4333-8444-555555555555";
+    const page = await readOpenPage(
+      loadFixture("jobposting-with-chrome.html"),
+      `https://jobs.example/en/jobs/detail/${boardId}/`,
+      noWait,
+    );
+    expect(page.fields).toEqual({
+      jobTitle: "Reading room clerk",
+      company: "City Reading Room",
+      jobDescription: "Welcome visitors and reshelve the morning returns.",
+      location: "Fribourg, 1700, CH",
+      salaryRange: "CHF 62000–68000 YEAR",
+      companyJobReferenceId: null,
+    });
+    expect(page.sourceJobId).toBe(boardId);
+    expect(page.fields.jobDescription).not.toContain("Browse occupations");
+    expect(page.fields.jobDescription).not.toContain("My account");
+    expect(page.fields.jobDescription).not.toContain("Other jobs");
+    expect(page.fields.jobDescription).not.toContain("Night porter");
+    expect(page.fields.jobDescription).not.toContain("Privacy notice");
+    expect(page.visibleText).toContain("Welcome visitors");
+    expect(page.visibleText).not.toContain("Browse occupations");
+    expect(page.visibleText).not.toContain("My account");
+    expect(page.visibleText).not.toContain("Saved searches");
+    expect(page.visibleText).not.toContain("Other jobs");
+    expect(page.visibleText).not.toContain("Night porter");
+    expect(page.visibleText).not.toContain("Bindery assistant");
+    expect(page.visibleText).not.toContain("Privacy notice");
   });
 });

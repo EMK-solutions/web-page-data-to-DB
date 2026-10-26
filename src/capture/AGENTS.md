@@ -4,4 +4,4 @@ Selectors for a site stay in one file. LinkedIn selectors live in `selectors.ts`
 
 Fixtures in `fixtures/` are synthetic. Do not commit a scraped live posting.
 
-The id in a LinkedIn job URL is `sourceJobId`. It is LinkedIn’s id. Never write it to `companyJobReferenceId`. The company reference is only the hiring company’s own reference, when the posting states one.
+The id in a LinkedIn job URL is `sourceJobId`. It is LinkedIn’s id. Never write it to `companyJobReferenceId`. A UUID in the page URL is also a board id, not the company reference. The company reference is only the hiring company’s own reference, when the posting states one.

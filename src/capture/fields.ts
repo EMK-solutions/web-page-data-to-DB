@@ -71,10 +71,18 @@ export function rejectBoardIdAsCompanyReference(
   fields: JobFields,
   sourceJobId: string | undefined,
 ): JobFields {
-  if (sourceJobId && fields.companyJobReferenceId === sourceJobId) {
-    return { ...fields, companyJobReferenceId: null };
-  }
-  return fields;
+  return rejectBoardIds(fields, [sourceJobId]);
+}
+
+export function rejectBoardIds(
+  fields: JobFields,
+  boardIds: readonly (string | undefined)[],
+): JobFields {
+  const reference = fields.companyJobReferenceId?.trim().toLowerCase();
+  if (!reference) return fields;
+  const blocked = boardIds.some((id) => id?.trim().toLowerCase() === reference);
+  if (!blocked) return fields;
+  return { ...fields, companyJobReferenceId: null };
 }
 
 export function applyModelGaps(

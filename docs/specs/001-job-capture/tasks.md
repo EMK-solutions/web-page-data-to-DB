@@ -8,7 +8,7 @@ Phase 1, job-post capture.
 - [x] Parse JobPosting JSON-LD, including `@graph`.
 - [x] Read LinkedIn from the open tab: show more, description nodes, region fallback, join-wall warning, URL id kept as `sourceJobId`.
 - [x] Read the Indeed model from the main world and prefer the sanitized description unless visible text is longer.
-- [x] Clip page text, keep its language, and call Ollama with the flat schema to fill gaps only.
+- [x] Clip the posting body, keep its language, and call Ollama with the flat schema to fill null fields only. Do not store the surrounding page as the description.
 - [x] Edit, copy, and download JSON. Store a few recent captures locally.
 - [x] Cover JSON-LD, the LinkedIn adapter, and bad model output with Vitest fixtures.
 - [x] Document the save contract without calling the website.

@@ -97,7 +97,9 @@ function formatSalary(value: unknown): string | null {
   const currency = typeof value.currency === "string" ? value.currency.trim() : "";
   const raw = "value" in value ? value.value : value;
   if (typeof raw === "string" || typeof raw === "number") {
-    return joinSalary(currency, String(raw), "");
+    const amount = emptyToNull(String(raw));
+    if (!amount) return null;
+    return joinSalary(currency, amount, "");
   }
   if (!isRecord(raw)) return null;
   const min = raw.minValue;
@@ -106,8 +108,9 @@ function formatSalary(value: unknown): string | null {
   const unit = typeof raw.unitText === "string" ? raw.unitText.trim() : "";
   let range = "";
   if (typeof min === "number" && typeof max === "number") range = `${min}–${max}`;
-  else if (typeof single === "number" || typeof single === "string") range = String(single);
+  else if (typeof single === "number" || typeof single === "string") range = emptyToNull(String(single)) ?? "";
   else if (typeof min === "number") range = String(min);
+  if (!range) return null;
   return joinSalary(currency, range, unit);
 }
 

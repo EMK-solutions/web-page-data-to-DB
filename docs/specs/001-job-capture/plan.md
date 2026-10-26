@@ -4,7 +4,7 @@
 
 WXT with the React TypeScript template. Auto-imports are off. React and Tailwind v4 style the side panel and the options page. The page reader is plain TypeScript and is injected with `chrome.scripting.executeScript` when Extract runs. It is not listed for every site.
 
-shadcn/ui components are copied for Button, Input, Textarea, Label, and Card. Zod checks model output and the stored capture. Ollama is called with `fetch`. The chat `format` is the flat JSON schema. Page text sent to the model is the clipped visible text, with script and style contents removed. Defuddle was tried for main-text cleanup and left out because it dominated the injected page-reader bundle.
+shadcn/ui components are copied for Button, Input, Textarea, Label, and Card. Zod checks model output and the stored capture. Ollama is called with `fetch`. The chat `format` is the flat JSON schema. The model receives the clipped posting body. Navigation, header, footer, account menus, and other listings are left out. Defuddle was tried for main-text cleanup and left out because it dominated the injected page-reader bundle.
 
 ## Permissions
 

@@ -7,9 +7,9 @@ export type PageRead = {
   sourceUrl: string;
   sourceJobId?: string;
   pageLanguage: string | null;
-  /** Clipped main text from the page. Sent to the model as untrusted data. */
+  /** Clipped posting body for the model. Site chrome is left out. */
   visibleText: string;
-  /** Description taken from the site adapter or JobPosting data, before the longer-text comparison. */
+  /** Description from JobPosting data or the site adapter. The full page is not stored here. */
   structuredDescription: string | null;
   warnings: string[];
   adapter: PageAdapter;
