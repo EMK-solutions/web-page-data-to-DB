@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Archive clerk</title>
+  </head>
+  <body>
+    <script type="application/ld+json">
+      { this is not json
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          { "@type": "Organization", "name": "Not The Employer" },
+          {
+            "@type": "JobPosting",
+            "title": "Archive clerk",
+            "description": "<p>Sort paper files.</p><p>Reference: NORTH-14</p>",
+            "hiringOrganization": { "@type": "Organization", "name": "North Archive" },
+            "jobLocation": {
+              "@type": "Place",
+              "address": {
+                "@type": "PostalAddress",
+                "addressLocality": "Lausanne",
+                "postalCode": "1003",
+                "addressCountry": "CH"
+              }
+            },
+            "baseSalary": {
+              "@type": "MonetaryAmount",
+              "currency": "CHF",
+              "value": {
+                "@type": "QuantitativeValue",
+                "minValue": 72000,
+                "maxValue": 84000,
+                "unitText": "YEAR"
+              }
+            },
+            "identifier": { "@type": "PropertyValue", "name": "Reference", "value": "NORTH-14" }
+          }
+        ]
+      }
+    </script>
+    <article>
+      <h1>Archive clerk</h1>
+      <p>Sort paper files in the north wing and label each box.</p>
+    </article>
+  </body>
+</html>
