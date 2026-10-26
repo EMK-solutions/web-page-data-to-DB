@@ -210,7 +210,7 @@ function isSelectionCapture(value: unknown): value is SelectionCapture {
   return true;
 }
 
-async function activeWebTab(): Promise<{ id: number; url: string }> {
+export async function activeWebTab(): Promise<{ id: number; url: string }> {
   const currentWindow = await browser.tabs.query({ active: true, currentWindow: true });
   const normalWindows =
     currentWindow.length > 0 ? [] : await browser.tabs.query({ active: true, windowType: "normal" });

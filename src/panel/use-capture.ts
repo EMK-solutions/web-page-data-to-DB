@@ -25,7 +25,11 @@ import {
   type ModelPurpose,
 } from "@/src/capture/ollama";
 import { emptySelectionMessage } from "@/src/capture/selection";
+import { applyStructuredExtract } from "@/src/capture/structured-extract";
 import { type PageRead } from "@/src/capture/types";
+import { createTabUrlSync } from "@/src/panel/tab-url-sync";
+import { watchActiveTabUrl } from "@/src/panel/watch-active-tab";
+import { readActiveStructuredJob } from "@/src/read-structured-tab";
 import { readActiveSelection, readActiveTab, TabReadError } from "@/src/read-tab";
 import { loadSettings } from "@/src/settings-store";
 import { type Settings } from "@/src/settings";
@@ -40,7 +44,7 @@ export type CaptureMeta = {
 
 type Phase = "idle" | "reading" | "modeling" | "ready";
 
-export type CaptureRequest = "page" | "selection-replace" | "selection-fill";
+export type CaptureRequest = "page" | "structured" | "selection-replace" | "selection-fill";
 
 export function useCapture() {
   const [phase, setPhase] = useState<Phase>("idle");
@@ -58,11 +62,36 @@ export function useCapture() {
   const dirty = useRef(new Set<JobFieldKey>());
   const formRef = useRef(form);
   const requestId = useRef(0);
+  const recentRef = useRef<JobCapture[]>([]);
 
   useEffect(() => {
+    let stopped = false;
+    const sync = createTabUrlSync({
+      onMatch: (capture) => restore(capture),
+      onEmpty: () => presentEmpty(),
+      currentRequestId: () => requestId.current,
+      bumpRequestId: () => {
+        requestId.current += 1;
+      },
+      captures: () => recentRef.current,
+    });
     void listRecentCaptures()
-      .then(setRecent)
-      .catch(() => setTabError("Recent captures could not be read from this browser."));
+      .then((rows) => {
+        if (stopped) return;
+        recentRef.current = rows;
+        setRecent(rows);
+        sync.recentLoaded();
+      })
+      .catch(() => {
+        if (!stopped) setTabError("Recent captures could not be read from this browser.");
+      });
+    const stopWatch = watchActiveTabUrl((url) => {
+      if (!stopped) sync.urlChanged(url);
+    });
+    return () => {
+      stopped = true;
+      stopWatch();
+    };
   }, []);
 
   function setOverwriteExisting(value: boolean) {
@@ -88,7 +117,9 @@ export function useCapture() {
         extractedAt: nextMeta.extractedAt,
         ...(nextMeta.sourceJobId ? { sourceJobId: nextMeta.sourceJobId } : {}),
       });
-      setRecent(await rememberCapture(capture));
+      const stored = await rememberCapture(capture);
+      recentRef.current = stored;
+      setRecent(stored);
     } catch {
       setTabError("The capture could not be stored in this browser.");
     }
@@ -122,6 +153,44 @@ export function useCapture() {
       return;
     }
     await continueCapture(id, page);
+  }
+
+  async function extractStructured() {
+    const id = startRequest("structured");
+    let tab: Awaited<ReturnType<typeof readActiveStructuredJob>>;
+    try {
+      tab = await readActiveStructuredJob();
+    } catch (error) {
+      failTab(id, error);
+      return;
+    }
+    if (id !== requestId.current) return;
+    const result = applyStructuredExtract({
+      doc: tab.doc,
+      pageUrl: tab.pageUrl,
+      current: fieldsFromForm(formRef.current),
+      overwrite: overwriteRef.current,
+    });
+    if (!result.applied) {
+      setNotice(result.message);
+      setPhase(meta ? "ready" : "idle");
+      return;
+    }
+    const nextMeta: CaptureMeta = {
+      sourceUrl: result.sourceUrl,
+      extractedAt: new Date().toISOString(),
+      pageLanguage: result.pageLanguage,
+      ...(result.sourceJobId ? { sourceJobId: result.sourceJobId } : {}),
+    };
+    const nextForm = fieldsToForm(result.fields);
+    setMeta(nextMeta);
+    updateForm(nextForm);
+    dirty.current.clear();
+    setWarnings([]);
+    setLlmPrompt(null);
+    await persist(nextForm, nextMeta);
+    if (id !== requestId.current) return;
+    setPhase("ready");
   }
 
   async function extractSelection(mode: "replace" | "fill") {
@@ -294,6 +363,18 @@ export function useCapture() {
     setNotice("Downloaded the JSON.");
   }
 
+  function presentEmpty() {
+    setMeta(null);
+    updateForm(blankForm());
+    dirty.current.clear();
+    setWarnings([]);
+    setTabError(null);
+    setModelError(null);
+    setNotice(null);
+    setLlmPrompt(null);
+    setPhase("idle");
+  }
+
   function restore(capture: JobCapture) {
     const nextMeta = metaFrom(capture);
     setMeta(nextMeta);
@@ -322,6 +403,7 @@ export function useCapture() {
     overwriteExisting,
     setOverwriteExisting,
     extract,
+    extractStructured,
     extractSelection,
     copyJson,
     downloadJson,

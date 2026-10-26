@@ -57,6 +57,26 @@ export function readOpenPage(doc: Document, pageUrl: string): PageRead {
   };
 }
 
+export type StructuredJobRead = {
+  found: boolean;
+  fields: JobFields;
+  sourceUrl: string;
+  pageLanguage: string | null;
+  sourceJobId?: string;
+};
+
+/** Schema.org JobPosting as published. Does not rewrite the title or description from the visible page. */
+export function readStructuredJobPosting(doc: Document, pageUrl: string): StructuredJobRead {
+  const { fields, sourceJobId, found } = structuredFields(doc, pageUrl);
+  return {
+    found,
+    fields,
+    sourceUrl: pageUrl,
+    pageLanguage: pageLanguage(doc),
+    ...(sourceJobId ? { sourceJobId } : {}),
+  };
+}
+
 /** Selection markdown for the model. Does not copy it into job fields or change the selection. */
 export function readSelectionCapture(doc: Document, pageUrl: string): SelectionCapture {
   const markdown = emptyToNull(readDocumentSelection(doc));

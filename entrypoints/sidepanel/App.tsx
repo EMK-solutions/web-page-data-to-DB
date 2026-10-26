@@ -32,8 +32,9 @@ export function App() {
           <h1 className="font-serif text-2xl text-foreground">Page capture</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Review the fields from the open tab. Nothing is sent to a website. Overwrite existing
-            replaces the form. Turn it off to fill only empty fields. A selection can replace the
-            fields or fill only what is still empty.
+            replaces the form. Turn it off to fill only empty fields. Extract structured data reads
+            a JobPosting already in the page and does not call the model. A selection can replace
+            the fields or fill only what is still empty.
           </p>
         </div>
         <Button
@@ -58,6 +59,19 @@ export function App() {
           {capture.phase === "modeling" && capture.requestKind === "page" ? <ButtonSpinner /> : null}
           Extract data from web page
         </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-auto min-h-9 w-full whitespace-normal"
+          onClick={() => void capture.extractStructured()}
+          disabled={busy}
+          aria-busy={capture.requestKind === "structured" && busy}
+        >
+          {capture.phase === "reading" && capture.requestKind === "structured" ? (
+            <ButtonSpinner />
+          ) : null}
+          Extract structured data
+        </Button>
         <label className="flex items-start gap-2 rounded-md border px-3 py-3 text-sm">
           <input
             type="checkbox"
@@ -68,8 +82,8 @@ export function App() {
           <span>
             <span className="font-medium">Overwrite existing</span>
             <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
-              Replaces values already in the form, including ones structured data filled. Off, Extract
-              data from web page fills only empty fields, the same way Add missing fields does.
+              Replaces values already in the form. Off, Extract data from web page and Extract
+              structured data fill only empty fields, the same way Add missing fields does.
             </span>
           </span>
         </label>
@@ -114,9 +128,7 @@ export function App() {
 
       {capture.phase === "reading" ? (
         <p role="status" className="text-sm text-muted-foreground">
-          {capture.requestKind === "page"
-            ? "Reading the open tab and collecting the fields that are already on the page."
-            : "Reading the selection. The page is not clicked or scrolled."}
+          {readingMessage(capture.requestKind)}
         </p>
       ) : null}
       {capture.phase === "modeling" ? (
@@ -310,6 +322,16 @@ function ButtonSpinner() {
       />
     </svg>
   );
+}
+
+function readingMessage(kind: CaptureRequest): string {
+  if (kind === "structured") {
+    return "Reading the schema.org JobPosting already in the page. The page is not clicked, and the model is not called.";
+  }
+  if (kind === "page") {
+    return "Reading the open tab and collecting the fields that are already on the page.";
+  }
+  return "Reading the selection. The page is not clicked or scrolled.";
 }
 
 function modelingMessage(kind: CaptureRequest): string {
