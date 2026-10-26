@@ -13,7 +13,9 @@ import {
   type JobFieldKey,
 } from "@/src/capture/schema";
 import { OllamaError, completeJobFields } from "@/src/capture/ollama";
-import { readActiveTab, TabReadError } from "@/src/read-tab";
+import { emptySelectionMessage } from "@/src/capture/selection";
+import { type PageRead } from "@/src/capture/types";
+import { readActiveSelection, readActiveTab, TabReadError } from "@/src/read-tab";
 import { loadSettings } from "@/src/settings-store";
 import { type Settings } from "@/src/settings";
 import { listRecentCaptures, rememberCapture } from "@/src/storage";
@@ -70,7 +72,7 @@ export function useCapture() {
     }
   }
 
-  async function extract() {
+  function startRequest(): number {
     const id = requestId.current + 1;
     requestId.current = id;
     setPhase("reading");
@@ -78,16 +80,46 @@ export function useCapture() {
     setModelError(null);
     setNotice(null);
     dirty.current.clear();
+    return id;
+  }
 
-    let page: Awaited<ReturnType<typeof readActiveTab>>;
+  function failTab(id: number, error: unknown) {
+    if (id !== requestId.current) return;
+    setTabError(error instanceof TabReadError ? error.message : "This tab could not be read.");
+    setPhase(meta ? "ready" : "idle");
+  }
+
+  async function extract() {
+    const id = startRequest();
+    let page: PageRead;
     try {
       page = await readActiveTab();
     } catch (error) {
-      if (id !== requestId.current) return;
-      setTabError(error instanceof TabReadError ? error.message : "This tab could not be read.");
+      failTab(id, error);
+      return;
+    }
+    await continueCapture(id, page);
+  }
+
+  async function extractSelection() {
+    const id = startRequest();
+    let selected: Awaited<ReturnType<typeof readActiveSelection>>;
+    try {
+      selected = await readActiveSelection();
+    } catch (error) {
+      failTab(id, error);
+      return;
+    }
+    if (id !== requestId.current) return;
+    if (selected.empty) {
+      setTabError(emptySelectionMessage);
       setPhase(meta ? "ready" : "idle");
       return;
     }
+    await continueCapture(id, selected.page);
+  }
+
+  async function continueCapture(id: number, page: PageRead) {
     if (id !== requestId.current) return;
 
     const nextMeta: CaptureMeta = {
@@ -200,6 +232,7 @@ export function useCapture() {
     notice,
     onFieldChange,
     extract,
+    extractSelection,
     copyJson,
     downloadJson,
     restore,

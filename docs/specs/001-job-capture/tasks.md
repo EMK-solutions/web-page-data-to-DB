@@ -6,7 +6,7 @@ Phase 1, job-post capture.
 - [x] Add the side panel, options page, and action that opens the panel.
 - [x] Read the active http(s) tab from the side panel. `tabs` plus `http://*/*` and `https://*/*` cover a click that does not grant `activeTab`. Local Ollama hosts stay listed. No `<all_urls>`.
 - [x] Parse JobPosting JSON-LD, including `@graph`.
-- [x] Read LinkedIn from the open tab: show more, description nodes, region fallback, join-wall warning, URL id kept as `sourceJobId`.
+- [x] Read LinkedIn from the open tab without clicking or scrolling: description nodes, including visually clamped text, region fallback, join-wall warning, URL id kept as `sourceJobId`.
 - [x] Read the Indeed model from the main world and prefer the sanitized description unless visible text is longer.
 - [x] Clip the posting body, keep its language, and call Ollama with the flat schema to fill null fields only. Do not store the surrounding page as the description.
 - [x] Edit, copy, and download JSON. Store a few recent captures locally.

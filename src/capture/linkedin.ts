@@ -1,5 +1,5 @@
 import { elementText } from "@/src/capture/dom";
-import { linkedInSelectors, loginWallText, showMoreLabel } from "@/src/capture/selectors";
+import { linkedInSelectors, loginWallText } from "@/src/capture/selectors";
 import { blankFields, normalizeFields, type JobFields } from "@/src/capture/fields";
 import { clipText, emptyToNull } from "@/src/capture/text";
 
@@ -38,12 +38,7 @@ export function linkedInJobIdFromUrl(pageUrl: string): string | null {
   return view?.[1] ?? null;
 }
 
-export async function readLinkedInJob(
-  doc: Document,
-  pageUrl: string,
-  wait: (ms: number) => Promise<void>,
-): Promise<LinkedInRead> {
-  await expandDescription(doc, wait);
+export function readLinkedInJob(doc: Document, pageUrl: string): LinkedInRead {
   const known = longestMatch(doc, linkedInSelectors.description);
   const fallback = longestMatch(doc, linkedInSelectors.jobDetailsRegion);
   const description = clipText(known ?? fallback ?? "");
@@ -66,30 +61,6 @@ export async function readLinkedInJob(
     ...(sourceJobId ? { sourceJobId } : {}),
     warnings,
   };
-}
-
-async function expandDescription(
-  doc: Document,
-  wait: (ms: number) => Promise<void>,
-): Promise<void> {
-  const button = findShowMore(doc);
-  if (!button) return;
-  button.click();
-  await wait(200);
-}
-
-function findShowMore(doc: Document): HTMLElement | null {
-  for (const selector of linkedInSelectors.showMore) {
-    for (const node of doc.querySelectorAll(selector)) {
-      if (node instanceof HTMLElement && isVisible(node)) return node;
-    }
-  }
-  for (const node of doc.querySelectorAll("button, a")) {
-    if (!(node instanceof HTMLElement) || !isVisible(node)) continue;
-    const label = `${node.getAttribute("aria-label") ?? ""} ${node.textContent ?? ""}`.trim();
-    if (showMoreLabel.test(label)) return node;
-  }
-  return null;
 }
 
 function loginWallVisible(doc: Document): boolean {

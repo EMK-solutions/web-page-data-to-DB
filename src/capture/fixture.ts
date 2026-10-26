@@ -8,5 +8,3 @@ export function loadFixture(name: string): Document {
   const html = readFileSync(join(fixtureDir, name), "utf8");
   return new DOMParser().parseFromString(html, "text/html");
 }
-
-export const noWait = () => Promise.resolve();

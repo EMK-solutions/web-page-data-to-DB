@@ -1,6 +1,7 @@
 import { browser } from "wxt/browser";
 import { isIndeedPage, isIndeedSlice, isPageRead } from "@/src/capture/guards";
 import { mergeIndeedSlice } from "@/src/capture/indeed";
+import { type SelectionCapture } from "@/src/capture/read-page";
 import { type PageRead } from "@/src/capture/types";
 
 export class TabReadError extends Error {
@@ -36,7 +37,11 @@ const browserPageProtocols = new Set([
 ]);
 
 type ReaderGlobal = typeof globalThis & {
-  __jobCaptureRead?: Promise<unknown>;
+  __jobCaptureRead?: unknown;
+};
+
+type SelectionGlobal = typeof globalThis & {
+  __jobCaptureSelection?: unknown;
 };
 
 type IndeedGlobal = typeof globalThis & {
@@ -165,6 +170,42 @@ export async function readActiveTab(): Promise<PageRead> {
   }
 }
 
+export async function readActiveSelection(): Promise<SelectionCapture> {
+  const tab = await activeWebTab();
+  try {
+    await browser.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ["/selection-reader.js"],
+    });
+  } catch (error) {
+    throwTabReadError(scriptingErrorMessage(error));
+  }
+
+  let injected: unknown;
+  try {
+    const [read] = await browser.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: readSelectionResult,
+    });
+    injected = read?.result ?? null;
+  } catch (error) {
+    throwTabReadError(scriptingErrorMessage(error));
+  }
+
+  if (!isSelectionCapture(injected)) {
+    throwTabReadError("The selection could not be read. Reload the tab and try again.");
+  }
+  return injected;
+}
+
+function isSelectionCapture(value: unknown): value is SelectionCapture {
+  if (typeof value !== "object" || value == null || !("empty" in value)) return false;
+  const empty = value.empty;
+  if (empty === true) return true;
+  if (empty !== false || !("page" in value)) return false;
+  return isPageRead(value.page);
+}
+
 async function activeWebTab(): Promise<{ id: number; url: string }> {
   const currentWindow = await browser.tabs.query({ active: true, currentWindow: true });
   const normalWindows =
@@ -193,10 +234,12 @@ function isHttpUrl(url: string | undefined): boolean {
   }
 }
 
-async function readPageResult(): Promise<unknown> {
-  const pending = (globalThis as ReaderGlobal).__jobCaptureRead;
-  if (!pending) return null;
-  return pending;
+function readPageResult(): unknown {
+  return (globalThis as ReaderGlobal).__jobCaptureRead ?? null;
+}
+
+function readSelectionResult(): unknown {
+  return (globalThis as SelectionGlobal).__jobCaptureSelection ?? null;
 }
 
 function readIndeedResult(): unknown {

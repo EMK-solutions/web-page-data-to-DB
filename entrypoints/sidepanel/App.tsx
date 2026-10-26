@@ -44,9 +44,19 @@ export function App() {
         </Button>
       </header>
 
-      <Button type="button" onClick={() => void capture.extract()} disabled={busy}>
-        {capture.phase === "reading" ? "Reading the tab…" : "Extract this job"}
-      </Button>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Button type="button" onClick={() => void capture.extract()} disabled={busy}>
+          {capture.phase === "reading" ? "Reading the tab…" : "Extract this job"}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => void capture.extractSelection()}
+          disabled={busy}
+        >
+          Extract selected text
+        </Button>
+      </div>
 
       {capture.phase === "reading" ? (
         <p role="status" className="text-sm text-muted-foreground">

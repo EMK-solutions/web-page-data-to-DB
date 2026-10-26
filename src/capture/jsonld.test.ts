@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadFixture, noWait } from "@/src/capture/fixture";
+import { loadFixture } from "@/src/capture/fixture";
 import { readJsonLdJob } from "@/src/capture/jsonld";
 import { readOpenPage } from "@/src/capture/read-page";
 
@@ -22,7 +22,6 @@ describe("JobPosting JSON-LD", () => {
     const page = await readOpenPage(
       loadFixture("jobposting-jobup.html"),
       "https://jobs.example/en/jobs/detail/example",
-      noWait,
     );
     expect(page.adapter).toBe("structured");
     expect(page.pageLanguage).toBe("de");
@@ -69,7 +68,6 @@ describe("JobPosting JSON-LD", () => {
     const page = await readOpenPage(
       loadFixture("visible-longer.html"),
       "https://jobs.example/binder",
-      noWait,
     );
     expect(page.fields.jobDescription).toBe("Short role.");
     expect(page.fields.jobDescription).not.toContain("Sew signatures");
@@ -84,7 +82,6 @@ describe("JobPosting JSON-LD", () => {
     const page = await readOpenPage(
       loadFixture("jobposting-with-chrome.html"),
       `https://jobs.example/en/jobs/detail/${boardId}/`,
-      noWait,
     );
     expect(page.fields).toEqual({
       jobTitle: "Reading room clerk",

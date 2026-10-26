@@ -3,23 +3,17 @@ import { indeedJobIdFromUrl } from "@/src/capture/indeed";
 import { readJsonLdJob } from "@/src/capture/jsonld";
 import { isLinkedInJobUrl, readLinkedInJob } from "@/src/capture/linkedin";
 import { postingBodyText } from "@/src/capture/main-text";
-import { blankFields, rejectBoardIds } from "@/src/capture/fields";
+import { blankFields, rejectBoardIds, type JobFields } from "@/src/capture/fields";
+import { clipText, emptyToNull } from "@/src/capture/text";
 import { type PageRead } from "@/src/capture/types";
 
-const defaultWait = (ms: number) =>
-  new Promise<void>((resolve) => {
-    setTimeout(resolve, ms);
-  });
+export type SelectionCapture = { empty: true } | { empty: false; page: PageRead };
 
-export async function readOpenPage(
-  doc: Document,
-  pageUrl: string,
-  wait: (ms: number) => Promise<void> = defaultWait,
-): Promise<PageRead> {
+export function readOpenPage(doc: Document, pageUrl: string): PageRead {
   const language = pageLanguage(doc);
 
   if (isLinkedInJobUrl(pageUrl)) {
-    const linkedIn = await readLinkedInJob(doc, pageUrl, wait);
+    const linkedIn = readLinkedInJob(doc, pageUrl);
     const visibleText = postingBodyText(doc);
     return {
       fields: linkedIn.fields,
@@ -34,10 +28,7 @@ export async function readOpenPage(
   }
 
   const visibleText = postingBodyText(doc);
-  const structured = readJsonLdJob(doc);
-  const urlBoardIds = boardIdsFromUrl(pageUrl);
-  const sourceJobId = indeedJobIdFromUrl(pageUrl) ?? urlBoardIds[0];
-  const fields = rejectBoardIds(structured ?? blankFields(), [sourceJobId, ...urlBoardIds]);
+  const { fields, sourceJobId, found } = structuredFields(doc, pageUrl);
   return {
     fields,
     sourceUrl: pageUrl,
@@ -45,8 +36,46 @@ export async function readOpenPage(
     visibleText,
     structuredDescription: fields.jobDescription,
     warnings: [],
-    adapter: structured ? "structured" : "visible-text",
+    adapter: found ? "structured" : "visible-text",
     ...(sourceJobId ? { sourceJobId } : {}),
+  };
+}
+
+export function readSelectionCapture(
+  doc: Document,
+  pageUrl: string,
+  selection: string,
+): SelectionCapture {
+  const selected = emptyToNull(selection);
+  if (!selected) return { empty: true };
+  const clipped = clipText(selected);
+  const { fields, sourceJobId, found } = structuredFields(doc, pageUrl);
+  return {
+    empty: false,
+    page: {
+      fields: { ...fields, jobDescription: clipped },
+      sourceUrl: pageUrl,
+      pageLanguage: pageLanguage(doc),
+      visibleText: clipped,
+      structuredDescription: clipped,
+      warnings: [],
+      adapter: found ? "structured" : "visible-text",
+      ...(sourceJobId ? { sourceJobId } : {}),
+    },
+  };
+}
+
+function structuredFields(
+  doc: Document,
+  pageUrl: string,
+): { fields: JobFields; sourceJobId: string | undefined; found: boolean } {
+  const structured = readJsonLdJob(doc);
+  const urlBoardIds = boardIdsFromUrl(pageUrl);
+  const sourceJobId = indeedJobIdFromUrl(pageUrl) ?? urlBoardIds[0];
+  return {
+    fields: rejectBoardIds(structured ?? blankFields(), [sourceJobId, ...urlBoardIds]),
+    sourceJobId,
+    found: structured != null,
   };
 }
 

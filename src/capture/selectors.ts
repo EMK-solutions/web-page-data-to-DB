@@ -9,11 +9,6 @@ export const linkedInSelectors = {
     ".jobs-description__content",
     "#job-details",
   ],
-  showMore: [
-    "button.jobs-description__footer-button",
-    "button.show-more-less-html__button--more",
-    ".jobs-description__footer button",
-  ],
   jobDetailsRegion: [
     ".jobs-search__job-details--container",
     ".jobs-details",
@@ -45,9 +40,6 @@ export const linkedInSelectors = {
     ".topcard__flavor--bullet",
   ],
 } as const;
-
-export const showMoreLabel =
-  /^(see more|show more|voir plus|mehr anzeigen|mostra di più|ver más)\b/i;
 
 export const loginWallText =
   /\b(join now|join linkedin|sign in to view|sign in to see|agree & join)\b/i;
