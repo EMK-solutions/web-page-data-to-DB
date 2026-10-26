@@ -126,11 +126,33 @@ export function captureToJson(capture: JobCapture): string {
 }
 
 function parseModelJson(text: string): unknown {
+  const raw = text.trim();
   try {
-    return parseJson(text);
+    return parseJson(raw);
   } catch {
+    const unwrapped = unwrapModelJson(raw);
+    if (unwrapped !== raw) {
+      try {
+        return parseJson(unwrapped);
+      } catch {
+        // The same error covers a wrapper that still does not contain JSON.
+      }
+    }
     throw new ModelOutputError("The model did not return JSON.");
   }
+}
+
+/** Drops a leading think block and a surrounding markdown fence. Does not log the text. */
+function unwrapModelJson(text: string): string {
+  let next = text.trim();
+  for (let pass = 0; pass < 4; pass += 1) {
+    const before = next;
+    next = next.replace(/^<think>[\s\S]*?<\/think>\s*/i, "").trim();
+    const fenced = /^```(?:json)?[^\n]*\n?([\s\S]*?)```\s*$/i.exec(next);
+    if (fenced?.[1] != null) next = fenced[1].trim();
+    if (next === before) break;
+  }
+  return next;
 }
 
 function coerceBlankStrings(value: unknown): unknown {

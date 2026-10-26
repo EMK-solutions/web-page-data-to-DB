@@ -16,6 +16,18 @@ const valid = {
   companyJobReferenceId: null,
 };
 
+const longDescription = {
+  ...valid,
+  jobDescription: [
+    "Accueillir les lecteurs et tenir le bureau du matin.",
+    "",
+    "## Missions",
+    "",
+    "- Trier les dossiers du fonds communal",
+    "- **Ranger** les rayons après la consultation",
+  ].join("\n"),
+};
+
 describe("model output schema", () => {
   it("rejects a numeric field", () => {
     expect(() => parseModelOutput({ ...valid, jobTitle: 1 })).toThrow(ModelOutputError);
@@ -31,6 +43,16 @@ describe("model output schema", () => {
     expect(() => parseModelOutput({ ...valid, employmentType: "FULL_TIME" })).toThrow(
       ModelOutputError,
     );
+  });
+
+  it("reads JSON after a leading think block", () => {
+    const reply = `<think>The description is long. {not the answer}</think>\n${JSON.stringify(longDescription)}`;
+    expect(parseModelOutput(reply)).toEqual(longDescription);
+  });
+
+  it("reads JSON inside a markdown fence", () => {
+    const reply = `\`\`\`json\n${JSON.stringify(longDescription)}\n\`\`\``;
+    expect(parseModelOutput(reply)).toEqual(longDescription);
   });
 
   it("rejects an array and a non-JSON string", () => {

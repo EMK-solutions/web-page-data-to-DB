@@ -103,6 +103,7 @@ export async function completeJobFields(
       body: JSON.stringify({
         model,
         stream: false,
+        think: false,
         format: jobFieldsJsonSchema,
         messages: [
           { role: "system", content: systemPrompt(input.purpose ?? "page") },

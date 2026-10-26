@@ -38,9 +38,11 @@ describe("Ollama chat", () => {
     );
     const body = JSON.parse(bodies[0] ?? "{}") as {
       format?: unknown;
+      think?: unknown;
       messages?: { content?: string }[];
     };
     expect(body.format).toEqual(jobFieldsJsonSchema);
+    expect(body.think).toBe(false);
     expect(body.messages?.[0]?.content).toContain("Keep the page language");
     expect(body.messages?.[0]?.content).toContain("posting body");
     expect(body.messages?.[0]?.content).not.toContain("Do not replace values that are already present");
