@@ -23,7 +23,7 @@ Load the unpacked extension:
 3. Choose Load unpacked.
 4. Select `dist/chrome-mv3`.
 
-Click the toolbar icon. The side panel opens. Open a job page, then choose Extract this job.
+Click the toolbar icon. The side panel opens. Open an http or https job page, then choose Extract this job. Chrome asks for access to the sites you visit so that click can read the tab. A click inside the panel does not grant that access by itself.
 
 For a development build, run `npm run dev` and load the same `dist/chrome-mv3` folder. Stop that command when you are done. This phase is checked with `npm test` and `npm run build`.
 

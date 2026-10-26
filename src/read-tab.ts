@@ -10,6 +10,31 @@ export class TabReadError extends Error {
   }
 }
 
+export type TabSnapshot = {
+  id?: number;
+  url?: string;
+};
+
+export type TabDecision =
+  | { ok: true; id: number; url: string }
+  | { ok: false; reason: TabRefusal; message: string };
+
+type TabRefusal = "missing-tab" | "missing-id" | "permission" | "browser-page" | "not-web";
+
+const browserPageProtocols = new Set([
+  "about:",
+  "chrome:",
+  "chrome-extension:",
+  "chrome-search:",
+  "chrome-untrusted:",
+  "devtools:",
+  "edge:",
+  "moz-extension:",
+  "opera:",
+  "vivaldi:",
+  "view-source:",
+]);
+
 type ReaderGlobal = typeof globalThis & {
   __jobCaptureRead?: Promise<unknown>;
 };
@@ -18,6 +43,75 @@ type IndeedGlobal = typeof globalThis & {
   __jobCaptureIndeed?: unknown;
 };
 
+export function throwTabReadError(message: string): never {
+  console.error(message);
+  throw new TabReadError(message);
+}
+
+export function scriptingErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) return error.message.trim();
+  if (typeof error === "string" && error.trim()) return error.trim();
+  return "The page script failed without an error message.";
+}
+
+export function explainTab(tab: TabSnapshot | undefined): TabDecision {
+  if (!tab) {
+    return {
+      ok: false,
+      reason: "missing-tab",
+      message: "No active tab was found. Open an http or https job page, then extract.",
+    };
+  }
+  if (tab.id == null) {
+    return {
+      ok: false,
+      reason: "missing-id",
+      message: "This tab has no id. The extension cannot read a tab without a tab id.",
+    };
+  }
+  if (!tab.url) {
+    return {
+      ok: false,
+      reason: "permission",
+      message:
+        "Permission: this tab's address is blank. A click inside the side panel does not grant activeTab, and without the tabs permission the address is omitted.",
+    };
+  }
+  let protocol = "";
+  try {
+    protocol = new URL(tab.url).protocol;
+  } catch {
+    return {
+      ok: false,
+      reason: "not-web",
+      message: "This tab's address could not be parsed, so it is not an http or https page.",
+    };
+  }
+  if (browserPageProtocols.has(protocol)) {
+    return {
+      ok: false,
+      reason: "browser-page",
+      message: `This tab is a browser page (${protocol}), not an http or https job page.`,
+    };
+  }
+  if (protocol !== "http:" && protocol !== "https:") {
+    return {
+      ok: false,
+      reason: "not-web",
+      message: `This tab is not an http or https page (${protocol}). Open a normal web page, then extract.`,
+    };
+  }
+  return { ok: true, id: tab.id, url: tab.url };
+}
+
+export function selectActiveTab(
+  currentWindow: readonly TabSnapshot[],
+  normalWindows: readonly TabSnapshot[],
+): TabSnapshot | undefined {
+  if (currentWindow.length > 0) return preferWebTab(currentWindow);
+  return preferWebTab(normalWindows);
+}
+
 export async function readActiveTab(): Promise<PageRead> {
   const tab = await activeWebTab();
   try {
@@ -25,8 +119,8 @@ export async function readActiveTab(): Promise<PageRead> {
       target: { tabId: tab.id },
       files: ["/page-reader.js"],
     });
-  } catch {
-    throw new TabReadError("This tab could not be read. Reload it, then extract again.");
+  } catch (error) {
+    throwTabReadError(scriptingErrorMessage(error));
   }
 
   let injected: unknown;
@@ -36,12 +130,12 @@ export async function readActiveTab(): Promise<PageRead> {
       func: readPageResult,
     });
     injected = read?.result ?? null;
-  } catch {
-    throw new TabReadError("This tab could not be read. Reload it, then extract again.");
+  } catch (error) {
+    throwTabReadError(scriptingErrorMessage(error));
   }
 
   if (!isPageRead(injected)) {
-    throw new TabReadError("The page did not return a capture. Reload the tab and try again.");
+    throwTabReadError("The page did not return a capture. Reload the tab and try again.");
   }
 
   if (!isIndeedPage(tab.url)) return injected;
@@ -61,33 +155,42 @@ export async function readActiveTab(): Promise<PageRead> {
     if (slice == null) return injected;
     if (!isIndeedSlice(slice)) return injected;
     return mergeIndeedSlice(injected, slice);
-  } catch {
+  } catch (error) {
+    const message = `The Indeed page model could not be read. Showing the fields found in the page markup. ${scriptingErrorMessage(error)}`;
+    console.error(message);
     return {
       ...injected,
-      warnings: [
-        ...injected.warnings,
-        "The Indeed page model could not be read. Showing the fields found in the page markup.",
-      ],
+      warnings: [...injected.warnings, message],
     };
   }
 }
 
 async function activeWebTab(): Promise<{ id: number; url: string }> {
-  const focused = await browser.tabs.query({ active: true, lastFocusedWindow: true });
-  const current = focused[0] ?? (await browser.tabs.query({ active: true, currentWindow: true }))[0];
-  if (!current?.id || !current.url) {
-    throw new TabReadError("This tab cannot be read. Open a job page, then extract.");
-  }
-  let protocol = "";
+  const currentWindow = await browser.tabs.query({ active: true, currentWindow: true });
+  const normalWindows =
+    currentWindow.length > 0 ? [] : await browser.tabs.query({ active: true, windowType: "normal" });
+  const decision = explainTab(selectActiveTab(currentWindow, normalWindows));
+  if (!decision.ok) throwTabReadError(decision.message);
+  return { id: decision.id, url: decision.url };
+}
+
+function preferWebTab(tabs: readonly TabSnapshot[]): TabSnapshot | undefined {
+  return (
+    tabs.find((tab) => isHttpUrl(tab.url)) ??
+    tabs.find((tab) => Boolean(tab.url)) ??
+    tabs.find((tab) => tab.id != null) ??
+    tabs[0]
+  );
+}
+
+function isHttpUrl(url: string | undefined): boolean {
+  if (!url) return false;
   try {
-    protocol = new URL(current.url).protocol;
+    const protocol = new URL(url).protocol;
+    return protocol === "http:" || protocol === "https:";
   } catch {
-    throw new TabReadError("This tab cannot be read. Open a normal web page, then extract.");
+    return false;
   }
-  if (protocol !== "http:" && protocol !== "https:") {
-    throw new TabReadError("This tab cannot be read. Open a normal web page, then extract.");
-  }
-  return { id: current.id, url: current.url };
 }
 
 async function readPageResult(): Promise<unknown> {
