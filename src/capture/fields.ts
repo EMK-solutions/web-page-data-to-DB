@@ -1,9 +1,11 @@
+import { calendarDateOrNull } from "@/src/capture/date";
 import { emptyToNull } from "@/src/capture/text";
 
 export const jobFieldKeys = [
   "jobTitle",
   "company",
   "jobDescription",
+  "jobPostedDate",
   "location",
   "salaryRange",
   "companyJobReferenceId",
@@ -18,6 +20,7 @@ export function blankFields(): JobFields {
     jobTitle: null,
     company: null,
     jobDescription: null,
+    jobPostedDate: null,
     location: null,
     salaryRange: null,
     companyJobReferenceId: null,
@@ -29,7 +32,8 @@ export function normalizeFields(
 ): JobFields {
   const fields = blankFields();
   for (const key of jobFieldKeys) {
-    fields[key] = emptyToNull(input[key]);
+    fields[key] =
+      key === "jobPostedDate" ? calendarDateOrNull(input[key]) : emptyToNull(input[key]);
   }
   return fields;
 }
@@ -41,6 +45,7 @@ export function blankForm(): FieldForm {
     jobTitle: "",
     company: "",
     jobDescription: "",
+    jobPostedDate: "",
     location: "",
     salaryRange: "",
     companyJobReferenceId: "",

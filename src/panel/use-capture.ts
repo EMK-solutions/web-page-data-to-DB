@@ -15,7 +15,14 @@ import {
   type JobFieldKey,
   type JobFields,
 } from "@/src/capture/schema";
-import { OllamaError, completeJobFields, type ModelPurpose } from "@/src/capture/ollama";
+import { localCalendarDate } from "@/src/capture/date";
+import {
+  completeJobFields,
+  extractionPrompt,
+  OllamaError,
+  type ExtractionPrompt,
+  type ModelPurpose,
+} from "@/src/capture/ollama";
 import { emptySelectionMessage } from "@/src/capture/selection";
 import { type PageRead } from "@/src/capture/types";
 import { readActiveSelection, readActiveTab, TabReadError } from "@/src/read-tab";
@@ -44,6 +51,7 @@ export function useCapture() {
   const [meta, setMeta] = useState<CaptureMeta | null>(null);
   const [recent, setRecent] = useState<JobCapture[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
+  const [llmPrompt, setLlmPrompt] = useState<ExtractionPrompt | null>(null);
   const dirty = useRef(new Set<JobFieldKey>());
   const formRef = useRef(form);
   const requestId = useRef(0);
@@ -202,12 +210,18 @@ export function useCapture() {
       return null;
     }
 
+    if (id !== requestId.current) return null;
+    const today = localCalendarDate();
+    const prompt = extractionPrompt({ page, purpose, today });
+    setLlmPrompt(prompt);
+
     try {
       return await completeJobFields({
         baseUrl: settings.ollamaBaseUrl,
         model: settings.ollamaModel,
         page,
         purpose,
+        today,
       });
     } catch (error) {
       if (id !== requestId.current) return null;
@@ -277,6 +291,7 @@ export function useCapture() {
     setTabError(null);
     setModelError(null);
     setNotice(null);
+    setLlmPrompt(null);
     setPhase("ready");
   }
 
@@ -289,6 +304,7 @@ export function useCapture() {
     meta,
     recent,
     notice,
+    llmPrompt,
     onFieldChange,
     requestKind,
     extract,

@@ -38,6 +38,23 @@ describe("JobPosting JSON-LD", () => {
     expect(Object.keys(page.fields)).not.toContain("employmentType");
   });
 
+  it("keeps a calendar datePosted and ignores a relative or impossible one", () => {
+    function posting(datePosted: string): Document {
+      const html = `<script type="application/ld+json">
+        {
+          "@type": "JobPosting",
+          "title": "Clerk",
+          "datePosted": ${JSON.stringify(datePosted)}
+        }
+      </script>`;
+      return new DOMParser().parseFromString(html, "text/html");
+    }
+    expect(readJsonLdJob(posting("2026-10-23"))?.jobPostedDate).toBe("2026-10-23");
+    expect(readJsonLdJob(posting("2026-10-23T08:00:00Z"))?.jobPostedDate).toBe("2026-10-23");
+    expect(readJsonLdJob(posting("2026-02-31"))?.jobPostedDate).toBeNull();
+    expect(readJsonLdJob(posting("3 days ago"))?.jobPostedDate).toBeNull();
+  });
+
   it("leaves salary null when the posting states only a currency", () => {
     const html = `<script type="application/ld+json">
       {
@@ -90,6 +107,7 @@ describe("JobPosting JSON-LD", () => {
       company: "City Reading Room",
       jobDescription: "Welcome visitors and reshelve the morning returns.",
       location: "Fribourg, 1700, CH",
+      jobPostedDate: null,
       salaryRange: "CHF 62000–68000 YEAR",
       companyJobReferenceId: null,
     });

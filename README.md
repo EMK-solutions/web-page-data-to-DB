@@ -2,9 +2,9 @@
 
 Personal side project. A Chrome extension that reads the job posting in the tab you already have open, shows the fields for review, and lets you copy or download JSON.
 
-A job post is the first use case: title, company, description, location, salary range, and the company’s own job reference. Empty values stay null. The board’s id, when the URL has one, is kept separately and is not treated as the company reference.
+A job post is the first use case: title, company, description, posted date, location, salary range, and the company’s own job reference. Empty values stay null. The posted date is a calendar date when the page states one, or empty when it does not. The board’s id, when the URL has one, is kept separately and is not treated as the company reference.
 
-Nothing in this phase is sent to a website. Extract this job asks Ollama, when it is running, to fill empty fields. The description keeps headings, bold, lists, and paragraphs as markdown. Select text on the page, then choose Replace fields or Add missing fields. An empty selection is not sent to the model. If the model is not running, the fields read from the page are still shown.
+Nothing in this phase is sent to a website. Extract data from web page asks Ollama, when it is running, to fill empty fields. The description keeps headings, bold, lists, and paragraphs as markdown. Select text on the page, then choose Replace fields or Add missing fields. An empty selection is not sent to the model. If the model is not running, the fields read from the page are still shown.
 
 ## Run
 
@@ -23,7 +23,7 @@ Load the unpacked extension:
 3. Choose Load unpacked.
 4. Select `dist/chrome-mv3`.
 
-Click the toolbar icon. The side panel opens. Open an http or https job page, then choose Extract this job. Chrome asks for access to the sites you visit so that click can read the tab. A click inside the panel does not grant that access by itself.
+Click the toolbar icon. The side panel opens. Open an http or https job page, then choose Extract data from web page. Chrome asks for access to the sites you visit so that click can read the tab. A click inside the panel does not grant that access by itself.
 
 For a development build, run `npm run dev` and load the same `dist/chrome-mv3` folder. Stop that command when you are done. This phase is checked with `npm test` and `npm run build`.
 

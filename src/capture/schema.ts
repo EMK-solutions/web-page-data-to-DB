@@ -5,6 +5,7 @@ import {
   type JobFields,
 } from "@/src/capture/fields";
 import { isRecord, parseJson } from "@/src/capture/records";
+import { calendarDateOrNull } from "@/src/capture/date";
 import { emptyToNull } from "@/src/capture/text";
 
 export {
@@ -31,6 +32,7 @@ export const jobFieldsSchema = z
     jobTitle: nullableText,
     company: nullableText,
     jobDescription: nullableText,
+    jobPostedDate: nullableText,
     location: nullableText,
     salaryRange: nullableText,
     companyJobReferenceId: nullableText,
@@ -56,6 +58,7 @@ export const jobFieldsJsonSchema = {
     jobTitle: { type: ["string", "null"] },
     company: { type: ["string", "null"] },
     jobDescription: { type: ["string", "null"] },
+    jobPostedDate: { type: ["string", "null"] },
     location: { type: ["string", "null"] },
     salaryRange: { type: ["string", "null"] },
     companyJobReferenceId: { type: ["string", "null"] },
@@ -64,6 +67,7 @@ export const jobFieldsJsonSchema = {
     "jobTitle",
     "company",
     "jobDescription",
+    "jobPostedDate",
     "location",
     "salaryRange",
     "companyJobReferenceId",
@@ -118,6 +122,7 @@ export function captureToJson(capture: JobCapture): string {
     jobTitle: capture.jobTitle,
     company: capture.company,
     jobDescription: capture.jobDescription,
+    jobPostedDate: capture.jobPostedDate,
     location: capture.location,
     salaryRange: capture.salaryRange,
     companyJobReferenceId: capture.companyJobReferenceId,
@@ -159,9 +164,18 @@ function coerceBlankStrings(value: unknown): unknown {
   if (!isRecord(value)) return value;
   const next: Record<string, unknown> = {};
   for (const [key, field] of Object.entries(value)) {
+    if (key === "jobPostedDate") {
+      next[key] = coercePostedDate(field);
+      continue;
+    }
     next[key] = typeof field === "string" ? emptyToNull(field) : field;
   }
   return next;
+}
+
+function coercePostedDate(value: unknown): string | null {
+  if (value == null) return null;
+  return typeof value === "string" ? calendarDateOrNull(value) : null;
 }
 
 function firstIssue(error: z.ZodError): string {

@@ -11,6 +11,7 @@ const valid = {
   jobTitle: "Archivist",
   company: "City Archive",
   jobDescription: "Sort the files.",
+  jobPostedDate: null,
   location: "Lausanne",
   salaryRange: null,
   companyJobReferenceId: null,
@@ -68,6 +69,22 @@ describe("model output schema", () => {
 
   it("turns blank strings into null", () => {
     expect(parseModelOutput({ ...valid, salaryRange: "  " }).salaryRange).toBeNull();
+  });
+
+  it("keeps a real posted date and stores null for a date that is not real", () => {
+    expect(parseModelOutput({ ...valid, jobPostedDate: "2026-10-26" }).jobPostedDate).toBe(
+      "2026-10-26",
+    );
+    expect(parseModelOutput({ ...valid, jobPostedDate: "2026-02-31" }).jobPostedDate).toBeNull();
+    expect(parseModelOutput({ ...valid, jobPostedDate: "3 days ago" }).jobPostedDate).toBeNull();
+    expect(parseModelOutput({ ...valid, jobPostedDate: "" }).jobPostedDate).toBeNull();
+    expect(parseModelOutput({ ...valid, jobPostedDate: 20261026 }).jobPostedDate).toBeNull();
+  });
+
+  it("still rejects a model object that omits the posted date", () => {
+    const rest: Record<string, unknown> = { ...valid };
+    delete rest.jobPostedDate;
+    expect(() => parseModelOutput(rest)).toThrow(ModelOutputError);
   });
 
   it("fills only gaps and drops a board id copied into the company reference", () => {

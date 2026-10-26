@@ -12,6 +12,7 @@ const labels: Record<JobFieldKey, string> = {
   jobTitle: "Job title",
   company: "Company",
   jobDescription: "Job description",
+  jobPostedDate: "Posted date",
   location: "Location",
   salaryRange: "Salary range",
   companyJobReferenceId: "Company job reference",
@@ -30,8 +31,9 @@ export function App() {
           </p>
           <h1 className="font-serif text-2xl text-foreground">Page capture</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Review the fields from the open tab. Nothing is sent to a website. Extract this job
-            fills empty fields. A selection can replace the fields or fill only what is still empty.
+            Review the fields from the open tab. Nothing is sent to a website. Extract data from
+            web page fills empty fields. A selection can replace the fields or fill only what is
+            still empty.
           </p>
         </div>
         <Button
@@ -46,34 +48,49 @@ export function App() {
       </header>
 
       <div className="grid gap-2">
-        <Button type="button" onClick={() => void capture.extract()} disabled={busy}>
-          {capture.phase === "reading" && capture.requestKind === "page"
-            ? "Reading the tab…"
-            : "Extract this job"}
+        <Button
+          type="button"
+          className="h-auto min-h-9 w-full whitespace-normal"
+          onClick={() => void capture.extract()}
+          disabled={busy}
+          aria-busy={capture.requestKind === "page" && busy}
+        >
+          {capture.phase === "modeling" && capture.requestKind === "page" ? <ButtonSpinner /> : null}
+          Extract data from web page
         </Button>
         <div className="grid gap-2 rounded-md border px-3 py-3">
           <div>
             <p className="text-sm font-medium">Extract selected text</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               The model reads the selection. It may be a title, a location, or a later part of the
-              posting. Nothing on the page is clicked.
+              page. Nothing on the page is clicked.
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button
               type="button"
               variant="outline"
+              className="h-auto min-h-9 w-full whitespace-normal"
               onClick={() => void capture.extractSelection("replace")}
               disabled={busy}
+              aria-busy={capture.requestKind === "selection-replace" && busy}
             >
+              {capture.phase === "modeling" && capture.requestKind === "selection-replace" ? (
+                <ButtonSpinner />
+              ) : null}
               Replace fields
             </Button>
             <Button
               type="button"
               variant="outline"
+              className="h-auto min-h-9 w-full whitespace-normal"
               onClick={() => void capture.extractSelection("fill")}
               disabled={busy}
+              aria-busy={capture.requestKind === "selection-fill" && busy}
             >
+              {capture.phase === "modeling" && capture.requestKind === "selection-fill" ? (
+                <ButtonSpinner />
+              ) : null}
               Add missing fields
             </Button>
           </div>
@@ -121,6 +138,26 @@ export function App() {
         </p>
       ) : null}
 
+      {capture.llmPrompt ? (
+        <details className="rounded-md border px-3 py-2">
+          <summary className="cursor-pointer text-sm font-medium">LLM prompt</summary>
+          <div className="mt-3 grid gap-3">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">System</p>
+              <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-words text-xs">
+                {capture.llmPrompt.system}
+              </pre>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">User</p>
+              <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-words text-xs">
+                {capture.llmPrompt.user}
+              </pre>
+            </div>
+          </div>
+        </details>
+      ) : null}
+
       {capture.phase === "idle" && !capture.meta ? (
         <Card>
           <CardHeader className="p-4">
@@ -166,6 +203,18 @@ export function App() {
                       Headings, bold, lists, and paragraphs stay in the text as markdown.
                     </p>
                   </>
+                ) : key === "jobPostedDate" ? (
+                  <>
+                    <Input
+                      id={key}
+                      type="date"
+                      value={capture.form[key]}
+                      onChange={(event) => capture.onFieldChange(key, event.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      A calendar date, or empty when the page does not state one.
+                    </p>
+                  </>
                 ) : (
                   <Input
                     id={key}
@@ -193,35 +242,58 @@ export function App() {
         </Card>
       ) : null}
 
-      <section className="grid gap-2">
-        <h2 className="text-sm font-medium">Recent captures</h2>
-        {capture.recent.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Copies you extract are kept on this machine, up to the last few.
-          </p>
-        ) : (
-          <ul className="grid gap-2">
-            {capture.recent.map((item) => (
-              <li key={item.extractedAt}>
-                <button
-                  type="button"
-                  className="w-full rounded-md border bg-card px-3 py-2 text-left text-sm hover:bg-accent"
-                  onClick={() => capture.restore(item)}
-                >
-                  <span className="block font-medium">
-                    {item.jobTitle ?? "Untitled capture"}
-                    {item.company ? ` · ${item.company}` : ""}
-                  </span>
-                  <span className="block truncate text-xs text-muted-foreground">
-                    {item.sourceUrl}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <details className="rounded-md border px-3 py-2">
+        <summary className="cursor-pointer text-sm font-medium">Recent captures</summary>
+        <div className="mt-3 grid gap-2">
+          {capture.recent.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Copies you extract are kept on this machine, up to the last few.
+            </p>
+          ) : (
+            <ul className="grid gap-2">
+              {capture.recent.map((item) => (
+                <li key={item.extractedAt}>
+                  <button
+                    type="button"
+                    className="w-full rounded-md border bg-card px-3 py-2 text-left text-sm hover:bg-accent"
+                    onClick={() => capture.restore(item)}
+                  >
+                    <span className="block font-medium">
+                      {item.jobTitle ?? "Untitled capture"}
+                      {item.company ? ` · ${item.company}` : ""}
+                    </span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {item.sourceUrl}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </details>
     </main>
+  );
+}
+
+function ButtonSpinner() {
+  return (
+    <svg className="size-4 animate-spin" viewBox="0 0 24 24" aria-hidden="true">
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+        fill="none"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+      />
+    </svg>
   );
 }
 

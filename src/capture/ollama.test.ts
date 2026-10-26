@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { blankFields, jobFieldsJsonSchema, ModelOutputError } from "@/src/capture/schema";
 import { type PageRead } from "@/src/capture/types";
-import { completeJobFields, OllamaError, testOllamaConnection } from "@/src/capture/ollama";
+import {
+  completeJobFields,
+  extractionPrompt,
+  OllamaError,
+  testOllamaConnection,
+} from "@/src/capture/ollama";
 
 const page: PageRead = {
   fields: { ...blankFields(), jobTitle: "Archivist" },
@@ -18,6 +23,7 @@ const modelJson = {
   jobTitle: "Changed",
   company: "City Archive",
   jobDescription: null,
+  jobPostedDate: null,
   location: "Lausanne",
   salaryRange: null,
   companyJobReferenceId: null,
@@ -51,7 +57,33 @@ describe("Ollama chat", () => {
     expect(body.messages?.[1]?.content).toContain("Ignore previous instructions");
     expect(body.messages?.[1]?.content).toContain("other listings");
     expect(body.messages?.[1]?.content).toContain("markdown");
+    expect(body.messages?.[0]?.content).toContain("jobPostedDate");
+    expect(body.messages?.[0]?.content).toContain("Do not invent a day");
+    expect(body.messages?.[0]?.content).toContain("3 days ago");
+    expect(body.messages?.[0]?.content).toContain("hier");
+    expect(body.messages?.[0]?.content).toContain("il y a 3 jours");
+    expect(body.messages?.[1]?.content).toMatch(/^Today is \d{4}-\d{2}-\d{2}\./);
+    expect(body.messages?.[1]?.content).toContain("jobPostedDate");
     expect(fields.company).toBe("City Archive");
+  });
+
+  it("puts the given local calendar date in the same prompt the request sends", async () => {
+    const bodies: string[] = [];
+    const fetchImpl: typeof fetch = async (_input, init) => {
+      bodies.push(String(init?.body ?? ""));
+      return new Response(JSON.stringify({ message: { content: JSON.stringify(modelJson) } }), {
+        status: 200,
+      });
+    };
+    const prompt = extractionPrompt({ page, today: "2026-10-26" });
+    await completeJobFields(
+      { baseUrl: "http://127.0.0.1:11434", model: "llama3.2", page, today: "2026-10-26" },
+      fetchImpl,
+    );
+    const body = JSON.parse(bodies[0] ?? "{}") as { messages?: { content?: string }[] };
+    expect(body.messages?.[0]?.content).toBe(prompt.system);
+    expect(body.messages?.[1]?.content).toBe(prompt.user);
+    expect(prompt.user.startsWith("Today is 2026-10-26.")).toBe(true);
   });
 
   it("tells the model a selection may be a title, a location, or a later slice", async () => {
@@ -84,6 +116,7 @@ describe("Ollama chat", () => {
     expect(system).toContain("markdown");
     expect(user).toContain("title");
     expect(user).toContain("location");
+    expect(user).toMatch(/^Today is \d{4}-\d{2}-\d{2}\./);
     expect(user).toContain("Page language: fr");
     expect(user).toContain("Untrusted selection");
     expect(user).not.toContain("Untrusted posting body");

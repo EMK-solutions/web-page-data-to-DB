@@ -1,3 +1,4 @@
+import { absolutePostedDate } from "@/src/capture/date";
 import { htmlToMarkdown } from "@/src/capture/markdown";
 import { isRecord, parseJson } from "@/src/capture/records";
 import { blankFields, normalizeFields, type JobFields } from "@/src/capture/fields";
@@ -26,6 +27,7 @@ export function readJsonLdJob(doc: Document): JobFields | null {
     company: organizationName(posting.hiringOrganization),
     jobDescription:
       typeof posting.description === "string" ? htmlToMarkdown(posting.description) : null,
+    jobPostedDate: absolutePostedDate(posting.datePosted),
     location: formatLocation(posting.jobLocation),
     salaryRange: formatSalary(posting.baseSalary),
     companyJobReferenceId: formatIdentifier(posting.identifier),
