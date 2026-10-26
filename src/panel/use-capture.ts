@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import {
   applyModelGaps,
+  applySelectionModel,
+  blankFields,
   blankForm,
   buildCapture,
   captureToJson,
@@ -11,8 +13,9 @@ import {
   type FieldForm,
   type JobCapture,
   type JobFieldKey,
+  type JobFields,
 } from "@/src/capture/schema";
-import { OllamaError, completeJobFields } from "@/src/capture/ollama";
+import { OllamaError, completeJobFields, type ModelPurpose } from "@/src/capture/ollama";
 import { emptySelectionMessage } from "@/src/capture/selection";
 import { type PageRead } from "@/src/capture/types";
 import { readActiveSelection, readActiveTab, TabReadError } from "@/src/read-tab";
@@ -29,8 +32,11 @@ export type CaptureMeta = {
 
 type Phase = "idle" | "reading" | "modeling" | "ready";
 
+export type CaptureRequest = "page" | "selection-replace" | "selection-fill";
+
 export function useCapture() {
   const [phase, setPhase] = useState<Phase>("idle");
+  const [requestKind, setRequestKind] = useState<CaptureRequest>("page");
   const [tabError, setTabError] = useState<string | null>(null);
   const [modelError, setModelError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -72,9 +78,10 @@ export function useCapture() {
     }
   }
 
-  function startRequest(): number {
+  function startRequest(kind: CaptureRequest): number {
     const id = requestId.current + 1;
     requestId.current = id;
+    setRequestKind(kind);
     setPhase("reading");
     setTabError(null);
     setModelError(null);
@@ -90,7 +97,7 @@ export function useCapture() {
   }
 
   async function extract() {
-    const id = startRequest();
+    const id = startRequest("page");
     let page: PageRead;
     try {
       page = await readActiveTab();
@@ -101,8 +108,9 @@ export function useCapture() {
     await continueCapture(id, page);
   }
 
-  async function extractSelection() {
-    const id = startRequest();
+  async function extractSelection(mode: "replace" | "fill") {
+    const id = startRequest(mode === "replace" ? "selection-replace" : "selection-fill");
+    const baseline = fieldsFromForm(formRef.current);
     let selected: Awaited<ReturnType<typeof readActiveSelection>>;
     try {
       selected = await readActiveSelection();
@@ -116,7 +124,39 @@ export function useCapture() {
       setPhase(meta ? "ready" : "idle");
       return;
     }
-    await continueCapture(id, selected.page);
+
+    const purpose: ModelPurpose = mode === "replace" ? "selection-replace" : "selection-fill";
+    const page: PageRead = {
+      fields: mode === "replace" ? blankFields() : baseline,
+      sourceUrl: selected.sourceUrl,
+      pageLanguage: selected.pageLanguage,
+      visibleText: selected.markdown,
+      structuredDescription: null,
+      warnings: [],
+      adapter: "visible-text",
+      ...(selected.sourceJobId ? { sourceJobId: selected.sourceJobId } : {}),
+    };
+    setPhase("modeling");
+
+    const model = await askModel(id, page, purpose);
+    if (model == null || id !== requestId.current) return;
+
+    const nextFields = keepDirty(
+      applySelectionModel(baseline, model, mode, selected.sourceJobId),
+    );
+    const nextMeta: CaptureMeta = {
+      sourceUrl: selected.sourceUrl,
+      extractedAt: new Date().toISOString(),
+      pageLanguage: selected.pageLanguage,
+      ...(selected.sourceJobId ? { sourceJobId: selected.sourceJobId } : {}),
+    };
+    const nextForm = fieldsToForm(nextFields);
+    setMeta(nextMeta);
+    updateForm(nextForm);
+    setWarnings([]);
+    await persist(nextForm, nextMeta);
+    if (id !== requestId.current) return;
+    setPhase("ready");
   }
 
   async function continueCapture(id: number, page: PageRead) {
@@ -136,36 +176,55 @@ export function useCapture() {
     await persist(nextForm, nextMeta);
     if (id !== requestId.current) return;
 
+    const model = await askModel(id, page, "page");
+    if (model == null || id !== requestId.current) return;
+    const merged = fieldsToForm(
+      keepDirty(applyModelGaps(page.fields, model, page.sourceJobId)),
+    );
+    updateForm(merged);
+    await persist(merged, nextMeta);
+    if (id !== requestId.current) return;
+    setPhase("ready");
+  }
+
+  async function askModel(
+    id: number,
+    page: PageRead,
+    purpose: ModelPurpose,
+  ): Promise<JobFields | null> {
     let settings: Settings;
     try {
       settings = await loadSettings();
     } catch {
-      if (id !== requestId.current) return;
+      if (id !== requestId.current) return null;
       setModelError("Saved options could not be read, so the model step was skipped.");
-      setPhase("ready");
-      return;
+      setPhase(purpose === "page" || meta ? "ready" : "idle");
+      return null;
     }
 
     try {
-      const model = await completeJobFields({
+      return await completeJobFields({
         baseUrl: settings.ollamaBaseUrl,
         model: settings.ollamaModel,
         page,
+        purpose,
       });
-      if (id !== requestId.current) return;
-      const filled = applyModelGaps(page.fields, model, page.sourceJobId);
-      const merged = fieldsToForm(filled);
-      for (const key of jobFieldKeys) {
-        if (dirty.current.has(key)) merged[key] = formRef.current[key];
-      }
-      updateForm(merged);
-      await persist(merged, nextMeta);
-      setPhase("ready");
     } catch (error) {
-      if (id !== requestId.current) return;
-      setModelError(modelMessage(error));
-      setPhase("ready");
+      if (id !== requestId.current) return null;
+      setModelError(modelMessage(error, purpose));
+      setPhase(purpose === "page" || meta ? "ready" : "idle");
+      return null;
     }
+  }
+
+  function keepDirty(fields: JobFields): JobFields {
+    const next = { ...fields };
+    for (const key of jobFieldKeys) {
+      if (!dirty.current.has(key)) continue;
+      const edited = formRef.current[key].trim();
+      next[key] = edited.length > 0 ? edited : null;
+    }
+    return next;
   }
 
   function currentCapture(): JobCapture | null {
@@ -231,6 +290,7 @@ export function useCapture() {
     recent,
     notice,
     onFieldChange,
+    requestKind,
     extract,
     extractSelection,
     copyJson,
@@ -248,9 +308,11 @@ function metaFrom(capture: JobCapture): CaptureMeta {
   };
 }
 
-function modelMessage(error: unknown): string {
+function modelMessage(error: unknown, purpose: ModelPurpose): string {
   if (error instanceof OllamaError || error instanceof ModelOutputError) return error.message;
-  return "The local model could not fill the gaps.";
+  return purpose === "page"
+    ? "The local model could not fill the gaps."
+    : "The local model could not read the selection.";
 }
 
 function downloadName(capture: JobCapture): string {

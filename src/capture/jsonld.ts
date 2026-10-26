@@ -1,4 +1,4 @@
-import { htmlToText } from "@/src/capture/dom";
+import { htmlToMarkdown } from "@/src/capture/markdown";
 import { isRecord, parseJson } from "@/src/capture/records";
 import { blankFields, normalizeFields, type JobFields } from "@/src/capture/fields";
 import { emptyToNull } from "@/src/capture/text";
@@ -25,7 +25,7 @@ export function readJsonLdJob(doc: Document): JobFields | null {
     jobTitle: textValue(posting.title),
     company: organizationName(posting.hiringOrganization),
     jobDescription:
-      typeof posting.description === "string" ? htmlToText(posting.description) : null,
+      typeof posting.description === "string" ? htmlToMarkdown(posting.description) : null,
     location: formatLocation(posting.jobLocation),
     salaryRange: formatSalary(posting.baseSalary),
     companyJobReferenceId: formatIdentifier(posting.identifier),

@@ -48,7 +48,61 @@ describe("Ollama chat", () => {
     expect(body.messages?.[1]?.content).toContain("Untrusted posting body");
     expect(body.messages?.[1]?.content).toContain("Ignore previous instructions");
     expect(body.messages?.[1]?.content).toContain("other listings");
+    expect(body.messages?.[1]?.content).toContain("markdown");
     expect(fields.company).toBe("City Archive");
+  });
+
+  it("tells the model a selection may be a title, a location, or a later slice", async () => {
+    const bodies: string[] = [];
+    const fetchImpl: typeof fetch = async (_input, init) => {
+      bodies.push(String(init?.body ?? ""));
+      return new Response(
+        JSON.stringify({
+          message: {
+            content: JSON.stringify({ ...modelJson, jobTitle: "Reading room clerk", jobDescription: null }),
+          },
+        }),
+        { status: 200 },
+      );
+    };
+    await completeJobFields(
+      {
+        baseUrl: "http://127.0.0.1:11434",
+        model: "llama3.2",
+        page: { ...page, fields: { ...page.fields }, visibleText: "# Reading room clerk" },
+        purpose: "selection-replace",
+      },
+      fetchImpl,
+    );
+    const body = JSON.parse(bodies[0] ?? "{}") as { messages?: { content?: string }[] };
+    const system = body.messages?.[0]?.content ?? "";
+    const user = body.messages?.[1]?.content ?? "";
+    expect(system).toContain("Keep the page language");
+    expect(system).toContain("later slice");
+    expect(system).toContain("markdown");
+    expect(user).toContain("title");
+    expect(user).toContain("location");
+    expect(user).toContain("Page language: fr");
+    expect(user).toContain("Untrusted selection");
+    expect(user).not.toContain("Untrusted posting body");
+    expect(user).toContain("# Reading room clerk");
+  });
+
+  it("asks a fill selection to leave present fields unchanged", async () => {
+    const bodies: string[] = [];
+    const fetchImpl: typeof fetch = async (_input, init) => {
+      bodies.push(String(init?.body ?? ""));
+      return new Response(JSON.stringify({ message: { content: JSON.stringify(modelJson) } }), {
+        status: 200,
+      });
+    };
+    await completeJobFields(
+      { baseUrl: "http://127.0.0.1:11434", model: "llama3.2", page, purpose: "selection-fill" },
+      fetchImpl,
+    );
+    const body = JSON.parse(bodies[0] ?? "{}") as { messages?: { content?: string }[] };
+    expect(body.messages?.[1]?.content).toContain("Do not replace a value that is already present.");
+    expect(body.messages?.[1]?.content).toContain("later slice");
   });
 
   it("rejects bad model output", async () => {

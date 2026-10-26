@@ -23,13 +23,6 @@ export function elementText(node: Node | null): string {
     .trim();
 }
 
-export function htmlToText(html: string): string {
-  const source = html.trim();
-  if (!source.includes("<")) return source;
-  const parsed = new DOMParser().parseFromString(source, "text/html");
-  return elementText(parsed.body);
-}
-
 export function pageLanguage(doc: Document): string | null {
   const lang = emptyToNull(doc.documentElement.lang);
   if (lang) return lang;

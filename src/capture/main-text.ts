@@ -1,4 +1,5 @@
 import { elementText } from "@/src/capture/dom";
+import { elementMarkdown } from "@/src/capture/markdown";
 import { clipText, PAGE_TEXT_LIMIT } from "@/src/capture/text";
 
 const chromeInPosting = [
@@ -30,7 +31,7 @@ export function postingBodyText(doc: Document): string {
   }
   const root = postingRoot(copy);
   stripChrome(root, root === copy.body);
-  return clipText(elementText(root), PAGE_TEXT_LIMIT);
+  return clipText(elementMarkdown(root), PAGE_TEXT_LIMIT);
 }
 
 function postingRoot(copy: Document): Element {

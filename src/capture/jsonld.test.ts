@@ -13,7 +13,7 @@ describe("JobPosting JSON-LD", () => {
       salaryRange: "CHF 72000–84000 YEAR",
       companyJobReferenceId: "NORTH-14",
     });
-    expect(fields?.jobDescription).toContain("Sort paper files.");
+    expect(fields?.jobDescription).toBe("Sort paper files.\n\nReference: NORTH-14");
     expect(fields?.jobDescription).not.toContain("<p>");
     expect(fields?.company).not.toBe("Not The Employer");
   });
@@ -30,7 +30,9 @@ describe("JobPosting JSON-LD", () => {
     expect(page.fields.location).toBe("Lausanne, 1003, CH");
     expect(page.fields.salaryRange).toBeNull();
     expect(page.fields.companyJobReferenceId).toBeNull();
-    expect(page.fields.jobDescription).toContain("Sie ordnen Unterlagen");
+    expect(page.fields.jobDescription).toBe(
+      "Sie ordnen Unterlagen und empfangen Besucher im Lesesaal.",
+    );
     expect(page.fields.jobDescription).not.toContain("<p>");
     expect(page.sourceJobId).toBeUndefined();
     expect(Object.keys(page.fields)).not.toContain("employmentType");
@@ -97,6 +99,7 @@ describe("JobPosting JSON-LD", () => {
     expect(page.fields.jobDescription).not.toContain("Other jobs");
     expect(page.fields.jobDescription).not.toContain("Night porter");
     expect(page.fields.jobDescription).not.toContain("Privacy notice");
+    expect(page.visibleText).toContain("# Reading room clerk");
     expect(page.visibleText).toContain("Welcome visitors");
     expect(page.visibleText).not.toContain("Browse occupations");
     expect(page.visibleText).not.toContain("My account");

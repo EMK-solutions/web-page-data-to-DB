@@ -92,3 +92,18 @@ export function applyModelGaps(
 ): JobFields {
   return rejectBoardIdAsCompanyReference(fillGaps(fields, model), sourceJobId);
 }
+
+export type SelectionApplyMode = "replace" | "fill";
+
+/** Replace writes the model fields. Fill keeps every field that already has a value. */
+export function applySelectionModel(
+  current: JobFields,
+  model: JobFields,
+  mode: SelectionApplyMode,
+  sourceJobId: string | undefined,
+): JobFields {
+  if (mode === "replace") {
+    return rejectBoardIdAsCompanyReference(normalizeFields(model), sourceJobId);
+  }
+  return applyModelGaps(current, model, sourceJobId);
+}

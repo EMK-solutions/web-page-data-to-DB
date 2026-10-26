@@ -1,4 +1,4 @@
-import { htmlToText } from "@/src/capture/dom";
+import { htmlToMarkdown } from "@/src/capture/markdown";
 import { isRecord } from "@/src/capture/records";
 import { type JobFields } from "@/src/capture/fields";
 import { emptyToNull, longerText } from "@/src/capture/text";
@@ -35,7 +35,7 @@ export function readIndeedFromWindow(rootProps: unknown): IndeedSlice | null {
     company:
       deepString(node, ["companyName", "company"], 0) ??
       deepString(parent, ["companyName", "company"], 0),
-    jobDescription: description ? emptyToNull(htmlToText(description)) : null,
+    jobDescription: description ? emptyToNull(htmlToMarkdown(description)) : null,
     location:
       deepString(node, ["formattedLocation", "location"], 0) ??
       deepString(parent, ["formattedLocation", "location"], 0),

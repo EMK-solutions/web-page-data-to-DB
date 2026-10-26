@@ -1,6 +1,7 @@
 import { browser } from "wxt/browser";
 import { isIndeedPage, isIndeedSlice, isPageRead } from "@/src/capture/guards";
 import { mergeIndeedSlice } from "@/src/capture/indeed";
+import { isRecord } from "@/src/capture/records";
 import { type SelectionCapture } from "@/src/capture/read-page";
 import { type PageRead } from "@/src/capture/types";
 
@@ -199,11 +200,14 @@ export async function readActiveSelection(): Promise<SelectionCapture> {
 }
 
 function isSelectionCapture(value: unknown): value is SelectionCapture {
-  if (typeof value !== "object" || value == null || !("empty" in value)) return false;
-  const empty = value.empty;
-  if (empty === true) return true;
-  if (empty !== false || !("page" in value)) return false;
-  return isPageRead(value.page);
+  if (!isRecord(value)) return false;
+  if (value.empty === true) return true;
+  if (value.empty !== false) return false;
+  if (typeof value.markdown !== "string" || value.markdown.trim().length === 0) return false;
+  if (typeof value.sourceUrl !== "string") return false;
+  if (value.pageLanguage !== null && typeof value.pageLanguage !== "string") return false;
+  if (value.sourceJobId !== undefined && typeof value.sourceJobId !== "string") return false;
+  return true;
 }
 
 async function activeWebTab(): Promise<{ id: number; url: string }> {

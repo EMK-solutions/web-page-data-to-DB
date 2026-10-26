@@ -1,4 +1,5 @@
 import { elementText } from "@/src/capture/dom";
+import { elementMarkdown } from "@/src/capture/markdown";
 import { linkedInSelectors, loginWallText } from "@/src/capture/selectors";
 import { blankFields, normalizeFields, type JobFields } from "@/src/capture/fields";
 import { clipText, emptyToNull } from "@/src/capture/text";
@@ -79,7 +80,7 @@ function longestMatch(doc: Document, selectors: readonly string[]): string | nul
   let best: string | null = null;
   for (const selector of selectors) {
     for (const node of doc.querySelectorAll(selector)) {
-      const text = elementText(node);
+      const text = elementMarkdown(node);
       if (!best || text.length > best.length) best = text;
     }
   }

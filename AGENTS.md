@@ -23,4 +23,4 @@ Direct dependencies must be MIT or Apache-2.0.
 
 Do not commit secrets. Do not commit real backend hosts. The backend URL is an options field stored on the machine. Phase 1 does not send captures to it.
 
-Review before save. The side panel shows the fields for edit. Copy and download are the only ways out in this phase. The local model fills gaps only, and page text is untrusted data.
+Review before save. The side panel shows the fields for edit. Copy and download are the only ways out in this phase. Extract this job fills empty fields. Selected text goes to the model, which can replace the fields or fill only empty ones. Descriptions keep headings, bold, lists, and paragraphs as markdown. Page text is untrusted data.

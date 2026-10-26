@@ -9,6 +9,7 @@ import { emptyToNull } from "@/src/capture/text";
 
 export {
   applyModelGaps,
+  applySelectionModel,
   blankFields,
   blankForm,
   fieldsFromForm,
@@ -18,7 +19,7 @@ export {
   normalizeFields,
   rejectBoardIdAsCompanyReference,
 } from "@/src/capture/fields";
-export type { FieldForm, JobFieldKey, JobFields } from "@/src/capture/fields";
+export type { FieldForm, JobFieldKey, JobFields, SelectionApplyMode } from "@/src/capture/fields";
 
 export const SCHEMA_VERSION = 1;
 export const USE_CASE = "job-post" as const;

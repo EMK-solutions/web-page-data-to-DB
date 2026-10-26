@@ -4,10 +4,19 @@ import { readJsonLdJob } from "@/src/capture/jsonld";
 import { isLinkedInJobUrl, readLinkedInJob } from "@/src/capture/linkedin";
 import { postingBodyText } from "@/src/capture/main-text";
 import { blankFields, rejectBoardIds, type JobFields } from "@/src/capture/fields";
+import { readDocumentSelection } from "@/src/capture/selection";
 import { clipText, emptyToNull } from "@/src/capture/text";
 import { type PageRead } from "@/src/capture/types";
 
-export type SelectionCapture = { empty: true } | { empty: false; page: PageRead };
+export type SelectionCapture =
+  | { empty: true }
+  | {
+      empty: false;
+      markdown: string;
+      sourceUrl: string;
+      pageLanguage: string | null;
+      sourceJobId?: string;
+    };
 
 export function readOpenPage(doc: Document, pageUrl: string): PageRead {
   const language = pageLanguage(doc);
@@ -41,27 +50,17 @@ export function readOpenPage(doc: Document, pageUrl: string): PageRead {
   };
 }
 
-export function readSelectionCapture(
-  doc: Document,
-  pageUrl: string,
-  selection: string,
-): SelectionCapture {
-  const selected = emptyToNull(selection);
-  if (!selected) return { empty: true };
-  const clipped = clipText(selected);
-  const { fields, sourceJobId, found } = structuredFields(doc, pageUrl);
+/** Selection markdown for the model. Does not copy it into job fields or change the selection. */
+export function readSelectionCapture(doc: Document, pageUrl: string): SelectionCapture {
+  const markdown = emptyToNull(readDocumentSelection(doc));
+  if (!markdown) return { empty: true };
+  const sourceJobId = indeedJobIdFromUrl(pageUrl) ?? boardIdsFromUrl(pageUrl)[0];
   return {
     empty: false,
-    page: {
-      fields: { ...fields, jobDescription: clipped },
-      sourceUrl: pageUrl,
-      pageLanguage: pageLanguage(doc),
-      visibleText: clipped,
-      structuredDescription: clipped,
-      warnings: [],
-      adapter: found ? "structured" : "visible-text",
-      ...(sourceJobId ? { sourceJobId } : {}),
-    },
+    markdown: clipText(markdown),
+    sourceUrl: pageUrl,
+    pageLanguage: pageLanguage(doc),
+    ...(sourceJobId ? { sourceJobId } : {}),
   };
 }
 

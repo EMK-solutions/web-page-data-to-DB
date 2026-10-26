@@ -4,7 +4,7 @@ Personal side project. A Chrome extension that reads the job posting in the tab 
 
 A job post is the first use case: title, company, description, location, salary range, and the company’s own job reference. Empty values stay null. The board’s id, when the URL has one, is kept separately and is not treated as the company reference.
 
-Nothing in this phase is sent to a website. If Ollama is running on this machine, it is asked only to fill gaps. If it is not, the fields read from the page are still shown.
+Nothing in this phase is sent to a website. Extract this job asks Ollama, when it is running, to fill empty fields. The description keeps headings, bold, lists, and paragraphs as markdown. Select text on the page, then choose Replace fields or Add missing fields. An empty selection is not sent to the model. If the model is not running, the fields read from the page are still shown.
 
 ## Run
 

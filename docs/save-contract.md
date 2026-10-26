@@ -13,7 +13,7 @@ Phase 1 keeps this payload on the machine: the side panel, a copied JSON file, a
 | `sourceJobId` | Optional. The board’s own id, such as the id in the page URL. Omit when unknown. |
 | `jobTitle` | String or `null`. |
 | `company` | String or `null`. |
-| `jobDescription` | String or `null`. Original language. |
+| `jobDescription` | String or `null`. Original language. Headings, bold, lists, and paragraphs may be markdown. |
 | `location` | String or `null`. |
 | `salaryRange` | String or `null`. |
 | `companyJobReferenceId` | String or `null`. The hiring company’s reference only. Never the board id. |

@@ -70,4 +70,16 @@ describe("LinkedIn job adapter", () => {
     expect(page.fields.companyJobReferenceId).toBeNull();
     expect(page.sourceJobId).toBe("9876543210");
   });
+
+  it("keeps headings, bold, and lists from the description HTML", async () => {
+    const doc = new DOMParser().parseFromString(
+      `<div class="jobs-description-content__text"><h2>Tasks</h2><ul><li>Sort <strong>paper</strong> files</li></ul></div>`,
+      "text/html",
+    );
+    const page = await readOpenPage(doc, viewUrl);
+    expect(page.fields.jobDescription).toBe("## Tasks\n\n- Sort **paper** files");
+    expect(page.fields.jobDescription).not.toContain("<");
+    expect(page.fields.companyJobReferenceId).toBeNull();
+    expect(page.sourceJobId).toBe("9876543210");
+  });
 });

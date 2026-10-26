@@ -5,7 +5,8 @@ import { Input } from "@/src/components/ui/input";
 import { Label } from "@/src/components/ui/label";
 import { Textarea } from "@/src/components/ui/textarea";
 import { jobFieldKeys, type JobFieldKey } from "@/src/capture/schema";
-import { useCapture } from "@/src/panel/use-capture";
+import { MarkdownView } from "@/src/panel/markdown-view";
+import { useCapture, type CaptureRequest } from "@/src/panel/use-capture";
 
 const labels: Record<JobFieldKey, string> = {
   jobTitle: "Job title",
@@ -29,8 +30,8 @@ export function App() {
           </p>
           <h1 className="font-serif text-2xl text-foreground">Page capture</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Review the fields from the open tab. Nothing is sent to a website. The local model, if
-            it is running, only fills gaps.
+            Review the fields from the open tab. Nothing is sent to a website. Extract this job
+            fills empty fields. A selection can replace the fields or fill only what is still empty.
           </p>
         </div>
         <Button
@@ -44,28 +45,51 @@ export function App() {
         </Button>
       </header>
 
-      <div className="flex flex-col gap-2 sm:flex-row">
+      <div className="grid gap-2">
         <Button type="button" onClick={() => void capture.extract()} disabled={busy}>
-          {capture.phase === "reading" ? "Reading the tab…" : "Extract this job"}
+          {capture.phase === "reading" && capture.requestKind === "page"
+            ? "Reading the tab…"
+            : "Extract this job"}
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => void capture.extractSelection()}
-          disabled={busy}
-        >
-          Extract selected text
-        </Button>
+        <div className="grid gap-2 rounded-md border px-3 py-3">
+          <div>
+            <p className="text-sm font-medium">Extract selected text</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              The model reads the selection. It may be a title, a location, or a later part of the
+              posting. Nothing on the page is clicked.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void capture.extractSelection("replace")}
+              disabled={busy}
+            >
+              Replace fields
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void capture.extractSelection("fill")}
+              disabled={busy}
+            >
+              Add missing fields
+            </Button>
+          </div>
+        </div>
       </div>
 
       {capture.phase === "reading" ? (
         <p role="status" className="text-sm text-muted-foreground">
-          Reading the open tab and collecting the fields that are already on the page.
+          {capture.requestKind === "page"
+            ? "Reading the open tab and collecting the fields that are already on the page."
+            : "Reading the selection. The page is not clicked or scrolled."}
         </p>
       ) : null}
       {capture.phase === "modeling" ? (
         <p role="status" className="text-sm text-muted-foreground">
-          Asking the local model to fill the gaps. You can edit the fields while it runs.
+          {modelingMessage(capture.requestKind)}
         </p>
       ) : null}
 
@@ -76,7 +100,10 @@ export function App() {
       ) : null}
       {capture.modelError ? (
         <p role="alert" className="rounded-md border border-destructive/30 bg-rose-50 px-3 py-2 text-sm text-destructive">
-          {capture.modelError} The fields already taken from the page are still here.
+          {capture.modelError}{" "}
+          {capture.requestKind === "page"
+            ? "The fields already taken from the page are still here."
+            : "The fields you already have are unchanged."}
         </p>
       ) : null}
       {capture.warnings.map((warning) => (
@@ -127,12 +154,18 @@ export function App() {
               <div key={key} className="grid gap-1.5">
                 <Label htmlFor={key}>{labels[key]}</Label>
                 {key === "jobDescription" ? (
-                  <Textarea
-                    id={key}
-                    value={capture.form[key]}
-                    className="min-h-40"
-                    onChange={(event) => capture.onFieldChange(key, event.target.value)}
-                  />
+                  <>
+                    <MarkdownView markdown={capture.form[key]} />
+                    <Textarea
+                      id={key}
+                      value={capture.form[key]}
+                      className="min-h-40"
+                      onChange={(event) => capture.onFieldChange(key, event.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Headings, bold, lists, and paragraphs stay in the text as markdown.
+                    </p>
+                  </>
                 ) : (
                   <Input
                     id={key}
@@ -190,4 +223,14 @@ export function App() {
       </section>
     </main>
   );
+}
+
+function modelingMessage(kind: CaptureRequest): string {
+  if (kind === "selection-replace") {
+    return "Asking the local model to read the selection and replace the fields. An edit you make while it runs is kept.";
+  }
+  if (kind === "selection-fill") {
+    return "Asking the local model to fill only the fields that are still empty. A description you already have stays.";
+  }
+  return "Asking the local model to fill the gaps. You can edit the fields while it runs.";
 }
