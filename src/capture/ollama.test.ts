@@ -140,6 +140,28 @@ describe("Ollama chat", () => {
     expect(body.messages?.[1]?.content).toContain("later slice");
   });
 
+  it("lets an overwrite extract replace fields and still forbids translation", async () => {
+    const bodies: string[] = [];
+    const fetchImpl: typeof fetch = async (_input, init) => {
+      bodies.push(String(init?.body ?? ""));
+      return new Response(JSON.stringify({ message: { content: JSON.stringify(modelJson) } }), {
+        status: 200,
+      });
+    };
+    await completeJobFields(
+      { baseUrl: "http://127.0.0.1:11434", model: "llama3.2", page, overwrite: true },
+      fetchImpl,
+    );
+    const body = JSON.parse(bodies[0] ?? "{}") as { messages?: { content?: string }[] };
+    const system = body.messages?.[0]?.content ?? "";
+    const user = body.messages?.[1]?.content ?? "";
+    expect(system).toContain("Keep the page language");
+    expect(system).toContain("Do not keep a translation");
+    expect(user).toContain("may be replaced");
+    expect(user).toContain("Do not keep a translated title or description");
+    expect(user).not.toContain("Fill only the null fields");
+  });
+
   it("rejects bad model output", async () => {
     const fetchImpl: typeof fetch = async () =>
       new Response(

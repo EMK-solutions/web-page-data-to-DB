@@ -83,17 +83,48 @@ describe("JobPosting JSON-LD", () => {
     });
   });
 
-  it("keeps the JSON-LD description when the surrounding page is longer", async () => {
+  it("uses the visible posting when JSON-LD description is only a short translation", async () => {
     const page = await readOpenPage(
       loadFixture("visible-longer.html"),
       "https://jobs.example/binder",
     );
-    expect(page.fields.jobDescription).toBe("Short role.");
-    expect(page.fields.jobDescription).not.toContain("Sew signatures");
+    expect(page.fields.jobTitle).toBe("Binder");
+    expect(page.fields.company).toBe("Bindery");
+    expect(page.fields.location).toBe("Sion");
+    expect(page.fields.jobDescription).toContain("Sew signatures");
+    expect(page.fields.jobDescription).not.toBe("Short role.");
     expect(page.fields.jobDescription).not.toContain("Skip to jobs");
     expect(page.visibleText).toContain("Sew signatures");
     expect(page.visibleText).not.toContain("Skip to jobs");
-    expect(page.fields.jobTitle).toBe("Binder");
+  });
+
+  it("keeps a French visible title and description over an English JSON-LD translation", () => {
+    const html = `<html lang="en"><body>
+      <script type="application/ld+json">
+        {
+          "@type": "JobPosting",
+          "title": "Senior IT Project Manager (m/f/x) 80-100%",
+          "description": "Join an organisation undergoing transformation.",
+          "hiringOrganization": { "name": "Vaudoise Assurances" },
+          "datePosted": "2026-10-23",
+          "jobLocation": "Lausanne"
+        }
+      </script>
+      <main>
+        <h1>Chef-fe de projet IT Senior (f/m/x) 80-100%</h1>
+        <div>
+          <p>Rejoignez une organisation en pleine transformation et pilotez des projets complexes.</p>
+          <p>Vous mobilisez les parties prenantes et accompagnez l'évolution des outils.</p>
+        </div>
+      </main>
+    </body></html>`;
+    const page = readOpenPage(new DOMParser().parseFromString(html, "text/html"), "https://www.jobup.ch/en/jobs/detail/example/");
+    expect(page.fields.jobTitle).toBe("Chef-fe de projet IT Senior (f/m/x) 80-100%");
+    expect(page.fields.jobDescription).toContain("Rejoignez une organisation");
+    expect(page.fields.jobDescription).not.toContain("Join an organisation");
+    expect(page.fields.company).toBe("Vaudoise Assurances");
+    expect(page.fields.location).toBe("Lausanne");
+    expect(page.fields.jobPostedDate).toBe("2026-10-23");
   });
 
   it("reads JobPosting fields and leaves the surrounding chrome out", async () => {

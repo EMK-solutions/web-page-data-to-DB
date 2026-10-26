@@ -10,6 +10,7 @@ import { emptyToNull } from "@/src/capture/text";
 
 export {
   applyModelGaps,
+  applyPageModel,
   applySelectionModel,
   blankFields,
   blankForm,
@@ -17,6 +18,7 @@ export {
   fieldsToForm,
   fillGaps,
   jobFieldKeys,
+  mergeExtractedFields,
   normalizeFields,
   rejectBoardIdAsCompanyReference,
 } from "@/src/capture/fields";

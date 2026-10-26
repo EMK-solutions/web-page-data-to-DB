@@ -31,9 +31,9 @@ export function App() {
           </p>
           <h1 className="font-serif text-2xl text-foreground">Page capture</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Review the fields from the open tab. Nothing is sent to a website. Extract data from
-            web page fills empty fields. A selection can replace the fields or fill only what is
-            still empty.
+            Review the fields from the open tab. Nothing is sent to a website. Overwrite existing
+            replaces the form. Turn it off to fill only empty fields. A selection can replace the
+            fields or fill only what is still empty.
           </p>
         </div>
         <Button
@@ -58,6 +58,21 @@ export function App() {
           {capture.phase === "modeling" && capture.requestKind === "page" ? <ButtonSpinner /> : null}
           Extract data from web page
         </Button>
+        <label className="flex items-start gap-2 rounded-md border px-3 py-3 text-sm">
+          <input
+            type="checkbox"
+            className="mt-0.5 size-4 accent-primary"
+            checked={capture.overwriteExisting}
+            onChange={(event) => capture.setOverwriteExisting(event.target.checked)}
+          />
+          <span>
+            <span className="font-medium">Overwrite existing</span>
+            <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
+              Replaces values already in the form, including ones structured data filled. Off, Extract
+              data from web page fills only empty fields, the same way Add missing fields does.
+            </span>
+          </span>
+        </label>
         <div className="grid gap-2 rounded-md border px-3 py-3">
           <div>
             <p className="text-sm font-medium">Extract selected text</p>

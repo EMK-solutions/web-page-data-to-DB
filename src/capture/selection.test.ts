@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { loadFixture } from "@/src/capture/fixture";
-import { applySelectionModel, blankFields } from "@/src/capture/fields";
+import { applyPageModel, applySelectionModel, blankFields, mergeExtractedFields } from "@/src/capture/fields";
 import { readSelectionCapture } from "@/src/capture/read-page";
 import { emptySelectionMessage, readDocumentSelection } from "@/src/capture/selection";
 
@@ -96,6 +96,30 @@ describe("selected text", () => {
       ...current,
       location: "Bern",
     });
+  });
+
+  it("overwrites the form, or fills only empty fields when overwrite is off", () => {
+    const current = { ...blankFields(), jobTitle: "Old title", jobDescription: "Old description", company: "Kept" };
+    const incoming = {
+      ...blankFields(),
+      jobTitle: "Chef-fe de projet",
+      jobDescription: "Rejoignez une organisation.",
+      company: "Vaudoise",
+      location: "Lausanne",
+    };
+    expect(mergeExtractedFields(current, incoming, true)).toEqual(incoming);
+    expect(mergeExtractedFields(current, incoming, false)).toEqual({
+      ...incoming,
+      jobTitle: "Old title",
+      jobDescription: "Old description",
+      company: "Kept",
+    });
+    const model = { ...blankFields(), jobTitle: "Chef-fe de projet IT", salaryRange: "CHF 100000" };
+    expect(applyPageModel(incoming, model, true, undefined).jobTitle).toBe("Chef-fe de projet IT");
+    expect(applyPageModel(incoming, model, true, undefined).jobDescription).toBe("Rejoignez une organisation.");
+    expect(applyPageModel(incoming, model, true, undefined).salaryRange).toBe("CHF 100000");
+    expect(applyPageModel(incoming, model, false, undefined).jobTitle).toBe("Chef-fe de projet");
+    expect(applyPageModel(incoming, model, false, undefined).salaryRange).toBe("CHF 100000");
   });
 });
 

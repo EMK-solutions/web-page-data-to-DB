@@ -24,14 +24,19 @@ const otherListing =
  * and other listings are left out. Defuddle was left out: its bundle dominated
  * the injected page reader.
  */
-export function postingBodyText(doc: Document): string {
+/** Posting root with scripts and site chrome removed. Does not include JSON-LD text. */
+export function cleanedPostingRoot(doc: Document): Element {
   const copy = new DOMParser().parseFromString(doc.documentElement.outerHTML, "text/html");
   for (const node of copy.querySelectorAll("script, style, noscript, template")) {
     node.remove();
   }
   const root = postingRoot(copy);
   stripChrome(root, root === copy.body);
-  return clipText(elementMarkdown(root), PAGE_TEXT_LIMIT);
+  return root;
+}
+
+export function postingBodyText(doc: Document): string {
+  return clipText(elementMarkdown(cleanedPostingRoot(doc)), PAGE_TEXT_LIMIT);
 }
 
 function postingRoot(copy: Document): Element {

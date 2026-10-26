@@ -3,6 +3,7 @@ import { indeedJobIdFromUrl } from "@/src/capture/indeed";
 import { readJsonLdJob } from "@/src/capture/jsonld";
 import { isLinkedInJobUrl, readLinkedInJob } from "@/src/capture/linkedin";
 import { postingBodyText } from "@/src/capture/main-text";
+import { visiblePostingCopy } from "@/src/capture/visible-posting";
 import { blankFields, rejectBoardIds, type JobFields } from "@/src/capture/fields";
 import { readDocumentSelection } from "@/src/capture/selection";
 import { clipText, emptyToNull } from "@/src/capture/text";
@@ -37,13 +38,19 @@ export function readOpenPage(doc: Document, pageUrl: string): PageRead {
   }
 
   const visibleText = postingBodyText(doc);
-  const { fields, sourceJobId, found } = structuredFields(doc, pageUrl);
+  const { fields: structured, sourceJobId, found } = structuredFields(doc, pageUrl);
+  const visible = visiblePostingCopy(doc);
+  const fields: JobFields = {
+    ...structured,
+    jobTitle: visible.jobTitle,
+    jobDescription: visible.jobDescription,
+  };
   return {
     fields,
     sourceUrl: pageUrl,
     pageLanguage: language,
     visibleText,
-    structuredDescription: fields.jobDescription,
+    structuredDescription: visible.jobDescription,
     warnings: [],
     adapter: found ? "structured" : "visible-text",
     ...(sourceJobId ? { sourceJobId } : {}),

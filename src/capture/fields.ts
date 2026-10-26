@@ -98,6 +98,31 @@ export function applyModelGaps(
   return rejectBoardIdAsCompanyReference(fillGaps(fields, model), sourceJobId);
 }
 
+/** Overwrite replaces the form. Off, only empty fields are filled. */
+export function mergeExtractedFields(
+  current: JobFields,
+  incoming: JobFields,
+  overwrite: boolean,
+): JobFields {
+  if (overwrite) return { ...incoming };
+  return fillGaps(current, incoming);
+}
+
+/** A non-null model value may replace a field when overwrite is on. Null does not clear it. */
+export function applyPageModel(
+  fields: JobFields,
+  model: JobFields,
+  overwrite: boolean,
+  sourceJobId: string | undefined,
+): JobFields {
+  if (!overwrite) return applyModelGaps(fields, model, sourceJobId);
+  const next = { ...fields };
+  for (const key of jobFieldKeys) {
+    if (model[key] != null) next[key] = model[key];
+  }
+  return rejectBoardIdAsCompanyReference(next, sourceJobId);
+}
+
 export type SelectionApplyMode = "replace" | "fill";
 
 /** Replace writes the model fields. Fill keeps every field that already has a value. */

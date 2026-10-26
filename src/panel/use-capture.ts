@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  applyModelGaps,
+  applyPageModel,
   applySelectionModel,
   blankFields,
   blankForm,
@@ -8,6 +8,7 @@ import {
   captureToJson,
   fieldsFromForm,
   fieldsToForm,
+  mergeExtractedFields,
   jobFieldKeys,
   ModelOutputError,
   type FieldForm,
@@ -52,6 +53,8 @@ export function useCapture() {
   const [recent, setRecent] = useState<JobCapture[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [llmPrompt, setLlmPrompt] = useState<ExtractionPrompt | null>(null);
+  const [overwriteExisting, setOverwriteExistingState] = useState(true);
+  const overwriteRef = useRef(true);
   const dirty = useRef(new Set<JobFieldKey>());
   const formRef = useRef(form);
   const requestId = useRef(0);
@@ -61,6 +64,11 @@ export function useCapture() {
       .then(setRecent)
       .catch(() => setTabError("Recent captures could not be read from this browser."));
   }, []);
+
+  function setOverwriteExisting(value: boolean) {
+    overwriteRef.current = value;
+    setOverwriteExistingState(value);
+  }
 
   function updateForm(next: FieldForm) {
     formRef.current = next;
@@ -170,13 +178,15 @@ export function useCapture() {
   async function continueCapture(id: number, page: PageRead) {
     if (id !== requestId.current) return;
 
+    const overwrite = overwriteRef.current;
     const nextMeta: CaptureMeta = {
       sourceUrl: page.sourceUrl,
       extractedAt: new Date().toISOString(),
       pageLanguage: page.pageLanguage,
       ...(page.sourceJobId ? { sourceJobId: page.sourceJobId } : {}),
     };
-    const nextForm = fieldsToForm(page.fields);
+    const seeded = mergeExtractedFields(fieldsFromForm(formRef.current), page.fields, overwrite);
+    const nextForm = fieldsToForm(seeded);
     setMeta(nextMeta);
     updateForm(nextForm);
     setWarnings(page.warnings);
@@ -184,10 +194,10 @@ export function useCapture() {
     await persist(nextForm, nextMeta);
     if (id !== requestId.current) return;
 
-    const model = await askModel(id, page, "page");
+    const model = await askModel(id, { ...page, fields: seeded }, "page", overwrite);
     if (model == null || id !== requestId.current) return;
     const merged = fieldsToForm(
-      keepDirty(applyModelGaps(page.fields, model, page.sourceJobId)),
+      keepDirty(applyPageModel(seeded, model, overwrite, page.sourceJobId)),
     );
     updateForm(merged);
     await persist(merged, nextMeta);
@@ -199,6 +209,7 @@ export function useCapture() {
     id: number,
     page: PageRead,
     purpose: ModelPurpose,
+    overwrite = false,
   ): Promise<JobFields | null> {
     let settings: Settings;
     try {
@@ -212,7 +223,7 @@ export function useCapture() {
 
     if (id !== requestId.current) return null;
     const today = localCalendarDate();
-    const prompt = extractionPrompt({ page, purpose, today });
+    const prompt = extractionPrompt({ page, purpose, today, overwrite });
     setLlmPrompt(prompt);
 
     try {
@@ -222,6 +233,7 @@ export function useCapture() {
         page,
         purpose,
         today,
+        overwrite,
       });
     } catch (error) {
       if (id !== requestId.current) return null;
@@ -307,6 +319,8 @@ export function useCapture() {
     llmPrompt,
     onFieldChange,
     requestKind,
+    overwriteExisting,
+    setOverwriteExisting,
     extract,
     extractSelection,
     copyJson,

@@ -9,3 +9,5 @@ The id in a LinkedIn job URL is `sourceJobId`. It is LinkedIn’s id. Never writ
 Read the LinkedIn description from the nodes already in the page, including text that is only visually clamped. Do not click See more or Show more, and do not focus or scroll the page.
 
 `jobPostedDate` is a real `YYYY-MM-DD` calendar date or null. Take an absolute date already on the page, including JSON-LD `datePosted` when it is a calendar date. Do not invent a day for a relative phrase in the extractor. The model may resolve that phrase from the local Today line in the user prompt.
+
+`jobTitle` and `jobDescription` come from the visible posting, not from JSON-LD. JSON-LD may still fill company, posted date, location, salary, and the company reference. A translated JSON-LD title or description must not be shown or kept over the on-page posting.
