@@ -5,6 +5,7 @@ import { Input } from "@/src/components/ui/input";
 import { Label } from "@/src/components/ui/label";
 import { Textarea } from "@/src/components/ui/textarea";
 import { jobFieldKeys, type JobFieldKey } from "@/src/capture/schema";
+import { ExplainableTitle } from "@/src/panel/explain-title";
 import { MarkdownView } from "@/src/panel/markdown-view";
 import { useCapture, type CaptureRequest } from "@/src/panel/use-capture";
 
@@ -31,10 +32,7 @@ export function App() {
           </p>
           <h1 className="font-serif text-2xl text-foreground">Page capture</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Review the fields from the open tab. Nothing is sent to a website. Overwrite existing
-            replaces the form. Turn it off to fill only empty fields. Extract structured data reads
-            a JobPosting already in the page and does not call the model. A selection can replace
-            the fields or fill only what is still empty.
+            Extract data from open browser tab
           </p>
         </div>
         <Button
@@ -72,34 +70,35 @@ export function App() {
           ) : null}
           Extract structured data
         </Button>
-        <label className="flex items-start gap-2 rounded-md border px-3 py-3 text-sm">
+        <div className="flex items-start gap-2 rounded-md border px-3 py-3 text-sm">
           <input
+            id="overwrite-existing"
             type="checkbox"
             className="mt-0.5 size-4 accent-primary"
             checked={capture.overwriteExisting}
             onChange={(event) => capture.setOverwriteExisting(event.target.checked)}
           />
-          <span>
-            <span className="font-medium">Overwrite existing</span>
-            <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
-              Replaces values already in the form. Off, Extract data from web page and Extract
-              structured data fill only empty fields, the same way Add missing fields does.
-            </span>
-          </span>
-        </label>
+          <ExplainableTitle
+            label="Overwrite existing"
+            title={
+              <label htmlFor="overwrite-existing" className="font-medium">
+                Overwrite existing
+              </label>
+            }
+            explanation="Replaces values already in the form. Off, Extract data from web page and Extract structured data fill only empty fields, the same way Append does."
+          />
+        </div>
         <div className="grid gap-2 rounded-md border px-3 py-3">
-          <div>
-            <p className="text-sm font-medium">Extract selected text</p>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              The model reads the selection. It may be a title, a location, or a later part of the
-              page. Nothing on the page is clicked.
-            </p>
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <ExplainableTitle
+            label="Extract selected text"
+            title={<p className="text-sm font-medium">Extract selected text</p>}
+            explanation="The model reads the selection. It may be a title, a location, or a later part of the page. Nothing on the page is clicked. Replace writes the selection over the fields. Append fills only empty fields and keeps a value that is already there."
+          />
+          <div className="flex gap-2">
             <Button
               type="button"
               variant="outline"
-              className="h-auto min-h-9 w-full whitespace-normal"
+              className="min-w-0 flex-1"
               onClick={() => void capture.extractSelection("replace")}
               disabled={busy}
               aria-busy={capture.requestKind === "selection-replace" && busy}
@@ -107,12 +106,12 @@ export function App() {
               {capture.phase === "modeling" && capture.requestKind === "selection-replace" ? (
                 <ButtonSpinner />
               ) : null}
-              Replace fields
+              Replace
             </Button>
             <Button
               type="button"
               variant="outline"
-              className="h-auto min-h-9 w-full whitespace-normal"
+              className="min-w-0 flex-1"
               onClick={() => void capture.extractSelection("fill")}
               disabled={busy}
               aria-busy={capture.requestKind === "selection-fill" && busy}
@@ -120,7 +119,7 @@ export function App() {
               {capture.phase === "modeling" && capture.requestKind === "selection-fill" ? (
                 <ButtonSpinner />
               ) : null}
-              Add missing fields
+              Append
             </Button>
           </div>
         </div>
@@ -200,20 +199,14 @@ export function App() {
       {capture.meta ? (
         <Card>
           <CardHeader className="p-4 pb-2">
-            <CardTitle className="text-base">Review</CardTitle>
-            <CardDescription className="break-words leading-relaxed">
-              {capture.meta.pageLanguage
-                ? `Page language: ${capture.meta.pageLanguage}. The text stays in that language. `
-                : ""}
-              Source: {capture.meta.sourceUrl}
-            </CardDescription>
+            <CardTitle className="text-base">Extracted data</CardTitle>
+            {capture.meta.pageLanguage ? (
+              <CardDescription className="leading-relaxed">
+                Page language: {capture.meta.pageLanguage}. The text stays in that language.
+              </CardDescription>
+            ) : null}
           </CardHeader>
           <CardContent className="grid gap-3 p-4 pt-0">
-            {capture.meta.sourceJobId ? (
-              <p className="text-xs text-muted-foreground">
-                Board id {capture.meta.sourceJobId}. This is not the company reference.
-              </p>
-            ) : null}
             {jobFieldKeys.map((key) => (
               <div key={key} className="grid gap-1.5">
                 <Label htmlFor={key}>{labels[key]}</Label>
@@ -299,6 +292,24 @@ export function App() {
           )}
         </div>
       </details>
+
+      {capture.meta ? (
+        <details className="rounded-md border px-3 py-2">
+          <summary className="cursor-pointer text-sm font-medium">Source</summary>
+          <div className="mt-3 grid gap-2 text-sm">
+            <p className="break-words">
+              <span className="font-medium">Page URL</span>{" "}
+              <span className="text-muted-foreground">{capture.meta.sourceUrl}</span>
+            </p>
+            {capture.meta.sourceJobId ? (
+              <p className="break-all">
+                <span className="font-medium">Board id</span>{" "}
+                <span className="text-muted-foreground">{capture.meta.sourceJobId}</span>
+              </p>
+            ) : null}
+          </div>
+        </details>
+      ) : null}
     </main>
   );
 }
