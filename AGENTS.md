@@ -6,7 +6,7 @@ Personal side project. External pull requests are not accepted yet. See `CONTRIB
 
 - `npm install`
 - `npm test`
-- `npm run build`
+- `npm run build` regenerates WXT’s public script paths before `tsc`, then builds `dist/chrome-mv3`
 - `npm run dev` for a load-unpacked development build
 
 Node 22. The production build is `dist/chrome-mv3`.
